@@ -183,15 +183,22 @@ export function verifyGenerated(raw: RawGenerated, lang: Lang, context: string):
   try {
     const vars = Object.fromEntries(raw.data.map((d) => [d.id, d.value]));
     const answer = evaluate(raw.employ.answer_expr, vars);
-    const bugs = raw.employ.bugs
-      .filter((x) => (ERROR_TYPES as string[]).includes(x.errorType))
-      .map((x) => ({ value: evaluate(x.expr, vars), errorType: x.errorType, why: x.why }));
-    const values = [answer, ...bugs.map((x) => x.value)];
-    const okNums = values.every(Number.isFinite) && answer > 0 && bugs.length >= 2;
-    const distinct = values.every((v, i) => values.every((w, j) => i === j || Math.abs(v - w) > 0.01));
+    // a wrong path the model labelled with an unknown type is still a useful wrong path
+    const candidates = raw.employ.bugs.flatMap((x) => {
+      try {
+        const errorType = ((ERROR_TYPES as string[]).includes(x.errorType) ? x.errorType : "wrong_data") as ErrorType;
+        return [{ value: evaluate(x.expr, vars), errorType, why: x.why }];
+      } catch {
+        return [];
+      }
+    });
+    // keep only wrong paths that differ from the answer and from each other
+    const bugs: typeof candidates = [];
+    for (const b of candidates) if (Number.isFinite(b.value) && [answer, ...bugs.map((x) => x.value)].every((v) => Math.abs(v - b.value) > 0.01)) bugs.push(b);
+    const okNums = Number.isFinite(answer) && answer > 0 && bugs.length >= 2;
     const oneCorrect = (cs: GenChoice[]) => cs.length >= 2 && cs.filter((c) => c.correct).length === 1;
-    const noDigits = !/\d/.test(raw.situation);
-    if (!okNums || !distinct || !oneCorrect(raw.formulate.choices) || !oneCorrect(raw.interpret.choices) || !noDigits) return null;
+    // fixed numbers are fine in a generated situation: the no-digits rule exists for templates whose numbers change
+    if (!okNums || !oneCorrect(raw.formulate.choices) || !oneCorrect(raw.interpret.choices)) return null;
     return {
       id: `${Date.now().toString(36)}`,
       lang,
