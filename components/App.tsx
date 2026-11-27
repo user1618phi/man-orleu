@@ -186,8 +186,10 @@ export function App() {
           name={settings.name}
           onLang={(l) => update({ lang: l })}
           onStart={(name) => {
+            const first = !settings.name;
             update({ name: name || T.defaultName[lang] });
-            go("home");
+            if (first) startTask(tplIndex);
+            else go("home");
           }}
         />
       )}
