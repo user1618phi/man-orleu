@@ -55,3 +55,19 @@ if (failures) {
   process.exit(1);
 }
 console.log(`\nall ${TEMPLATES.length} templates passed`);
+
+// Expression evaluator used by /api/generate to re-check model arithmetic.
+import { evaluate } from "../lib/expr";
+const cases: [string, Record<string, number>, number][] = [
+  ["a * b - c", { a: 24, b: 9100, c: 180000 }, 38400],
+  ["ceil(q * h * d / b)", { q: 23, h: 2, d: 90, b: 20 }, 207],
+  ["(x + 2) / -4", { x: 6 }, -2],
+  ["min(t, u) * r1 + max(0, u - t) * r2", { t: 100, u: 130, r1: 20, r2: 30 }, 2900],
+];
+for (const [e, v, want] of cases) if (Math.abs(evaluate(e, v) - want) > 1e-9) { console.error("FAIL expr", e); process.exit(1); }
+for (const bad of ["process.exit(1)", "a; b", "constructor", "1 +", "Math.PI"]) {
+  let threw = false;
+  try { evaluate(bad, { a: 1, b: 2 }); } catch { threw = true; }
+  if (!threw) { console.error("FAIL expr should reject", bad); process.exit(1); }
+}
+console.log("expression evaluator ok");

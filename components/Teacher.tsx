@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { get, set } from "idb-keyval";
 import jsQR from "jsqr";
 import { NetBadge } from "./NetBadge";
+import { LocalTask } from "./LocalTask";
 import { decodeSummary, pct, type Summary } from "@/lib/profile";
 import { demoClass, ERROR_TIP, STAGE_TIP } from "@/lib/teacher";
 import { ERROR_NAME, STAGE_NAME } from "@/lib/i18n";
@@ -243,6 +244,8 @@ export function Teacher() {
             </section>
           </>
         )}
+
+        <LocalTask lang={lang} />
 
         <footer className="flex flex-col gap-2 border-t border-line pt-4">
           <p className="label">{TT.note[lang]}</p>
