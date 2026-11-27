@@ -7,7 +7,7 @@
 Офлайн-тренажёр математической грамотности для 7–9 классов.<br>
 Показывает, **на каком шаге задачи** ошибся ученик, — и работает без интернета.
 
-**[Открыть демо](https://man-orleu.vercel.app)** · **[Панель учителя](https://man-orleu.vercel.app/teacher)** · **[Питч-видео, 2:26](https://drive.google.com/file/d/1jTHs3z6KEORHN0wMm7skZHruGTlujcxK/view)**
+**[Открыть демо](https://man-orleu.vercel.app)** · **[Панель учителя](https://man-orleu.vercel.app/teacher)** · **[Питч-видео, 2:26](https://drive.google.com/file/d/1tBb6YkLzR5B7Hym27_-NUW-Dl9E6ZiIW/view)**
 
 Órleu Hack 2026 · кейс 3 «Образование: читать и понимать» · команда CtrlX
 
