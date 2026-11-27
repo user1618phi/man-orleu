@@ -56,7 +56,7 @@ export function StimulusView({ stimulus, params, lang, picked, onToggle, reveal 
                     <tr key={j}>
                       {r.map((c) => (
                         <td key={c.id} className="border-b border-line py-1 pr-2 align-middle">
-                          <CellView c={c} big={/\d/.test(c.text(params)[lang])} />
+                          <CellView c={c} big={/^[\d\s\u00a0:,.%₸−-]+(мин|ай|мес|ГБ|МБ|кг|л)?$/.test(c.text(params)[lang].trim())} />
                         </td>
                       ))}
                     </tr>

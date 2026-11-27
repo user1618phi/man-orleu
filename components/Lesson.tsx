@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { StimulusView } from "./StimulusView";
-import { checkEmploy, checkFormulate, type Instance, type Verdict, type EmployVerdict } from "@/lib/engine";
+import { checkEmploy, checkFormulate, choiceOrder, type Instance, type Verdict, type EmployVerdict } from "@/lib/engine";
 import { ERROR_NAME, STAGE_DESC, STAGE_NAME, T } from "@/lib/i18n";
 import { parseAnswer } from "@/lib/format";
 import type { Attempt, Choice, ErrorType, L, Lang, Stage } from "@/lib/types";
@@ -38,6 +38,8 @@ export function Lesson({ inst, lang, onDone, onExit }: Props) {
   const [inputErr, setInputErr] = useState(false);
   // step 3
   const choices3 = useMemo(() => t.interpret.choices(inst.params), [t, inst.params]);
+  const order1 = useMemo(() => choiceOrder(inst.seed, t.formulate.choices.length, 0x51ed), [inst.seed, t]);
+  const order3 = useMemo(() => choiceOrder(inst.seed, choices3.length, 0x7a3c), [inst.seed, choices3]);
   const [choice3, setChoice3] = useState<number | null>(null);
   const [fb3, setFb3] = useState<Feedback | null>(null);
 
@@ -126,7 +128,7 @@ export function Lesson({ inst, lang, onDone, onExit }: Props) {
       {step === 1 && (
         <section className="flex flex-col gap-4">
           <p className="text-[18px]">{L(t.formulate.prompt)}</p>
-          <ChoiceList items={t.formulate.choices.map((c) => c.text[lang])} value={choice1} onChange={fb1 ? undefined : setChoice1} />
+          <ChoiceList items={t.formulate.choices.map((c) => c.text[lang])} order={order1} value={choice1} onChange={fb1 ? undefined : setChoice1} />
           <p className="label">
             {L(T.markData)} · {L(T.marked)} {picked.size}
           </p>
@@ -203,7 +205,7 @@ export function Lesson({ inst, lang, onDone, onExit }: Props) {
       {step === 3 && (
         <section className="flex flex-col gap-4">
           <p className="text-[18px]">{L(t.interpret.prompt)}</p>
-          <ChoiceList items={choices3.map((c) => c.text[lang])} value={choice3} onChange={fb3 ? undefined : setChoice3} />
+          <ChoiceList items={choices3.map((c) => c.text[lang])} order={order3} value={choice3} onChange={fb3 ? undefined : setChoice3} />
           {fb3 && <FeedbackView fb={fb3} lang={lang} />}
           {!fb3 ? (
             <button type="button" className="btn primary block" disabled={choice3 === null} onClick={check3}>
@@ -234,10 +236,10 @@ function StepHeader({ step, stage, lang }: { step: number; stage: Stage; lang: L
   );
 }
 
-function ChoiceList({ items, value, onChange }: { items: string[]; value: number | null; onChange?: (i: number) => void }) {
+function ChoiceList({ items, order, value, onChange }: { items: string[]; order: number[]; value: number | null; onChange?: (i: number) => void }) {
   return (
     <div className="flex flex-col gap-2" role="group">
-      {items.map((txt, i) => (
+      {order.map((i) => ({ i, txt: items[i] })).map(({ i, txt }) => (
         <button key={i} type="button" className="choice" aria-pressed={value === i} disabled={!onChange && value !== i} onClick={() => onChange?.(i)}>
           <span className="box" aria-hidden />
           <span>{txt}</span>

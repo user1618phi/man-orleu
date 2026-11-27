@@ -232,8 +232,9 @@ function Onboard({ lang, onStart }: { lang: Lang; onStart: (name: string) => voi
     <div className="flex flex-col gap-10">
       <div className="enter">
         <h1 className="whitespace-pre-line text-[48px]">
-          мән{"\n"}
-          <span className="text-acc-text">{T.tagline[lang].split("\n")[0].toLowerCase()}</span>
+          {T.tagline[lang].split("\n")[0]}
+          {"\n"}
+          <span className="text-acc-text">{T.tagline[lang].split("\n")[1]}</span>
         </h1>
         <p className="mt-6 text-[17px] text-mut">
           {lang === "kk"

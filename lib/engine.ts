@@ -75,3 +75,14 @@ export function checkEmploy(inst: Instance, value: number): EmployVerdict {
   }
   return { correct: false, errorType: "calc_slip" };
 }
+
+/** Stable per-instance order of choices, so the correct one is not always first. */
+export function choiceOrder(seed: number, n: number, salt: number): number[] {
+  const rng = mulberry32((seed ^ salt) >>> 0);
+  const idx = Array.from({ length: n }, (_, i) => i);
+  for (let i = n - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [idx[i], idx[j]] = [idx[j], idx[i]];
+  }
+  return idx;
+}
