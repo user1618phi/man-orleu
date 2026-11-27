@@ -8,7 +8,7 @@ import { ERROR_NAME, STAGE_NAME, T } from "@/lib/i18n";
 import { num, parseAnswer } from "@/lib/format";
 import type { Attempt, ErrorType, L, Lang, Stage } from "@/lib/types";
 
-export type StageStatus = "first" | "retry" | "hint" | "solution";
+export type StageStatus = "first" | "retry" | "hint" | "solution" | "skipped";
 export interface LessonResult {
   attempts: Attempt[];
   answer: number | null;
@@ -26,7 +26,7 @@ interface Props {
 
 type Phase = "1a" | "1b" | "2" | "3";
 type Sheet = { tone: "ok" | "bad"; title: string; text: string[] } | null;
-type Track = { tries: number; hints: number; solution: boolean; firstErr?: ErrorType; first?: boolean };
+type Track = { tries: number; hints: number; solution: boolean; skipped?: boolean; firstErr?: ErrorType; first?: boolean };
 
 const stamp = () => Date.now();
 /** Template explanations start with "Верно:" / "Дұрыс:"; the sheet title already says it. */
@@ -79,7 +79,7 @@ export function Lesson({ inst, lang, onDone, onExit, exam }: Props) {
   };
 
   const finish = (lastAttempts: Attempt[], tr: Record<Stage, Track>) => {
-    const status = (x: Track): StageStatus => (x.solution ? "solution" : x.hints > 0 ? "hint" : x.first ? "first" : "retry");
+    const status = (x: Track): StageStatus => (x.solution ? "solution" : x.skipped ? "skipped" : x.hints > 0 ? "hint" : x.first ? "first" : "retry");
     onDone({
       attempts: lastAttempts,
       answer: firstAnswer,
@@ -190,6 +190,29 @@ export function Lesson({ inst, lang, onDone, onExit, exam }: Props) {
     }
     if (phase === "2") setRaw("");
   };
+  /** "Дальше" after a wrong answer: show the right one first, mark the step as done with a mistake. */
+  const skip = () => {
+    if (phase === "1a") {
+      const k = t.formulate.choices.findIndex((c) => c.correct);
+      if (c1 !== null && c1 !== k) setOut1((s) => new Set(s).add(c1));
+      setC1(k);
+      bump("formulate", { skipped: true });
+      setSheet({ tone: "ok", title: L(T.rightAnswer), text: [L(t.formulate.choices[k].text)] });
+    } else if (phase === "1b") {
+      const needed = dataRows(inst.stimulus).flat().filter((r) => r.needed);
+      setPicked(new Set(needed.map((r) => r.id)));
+      setBadRows(new Set());
+      bump("formulate", { skipped: true });
+      setSheet({ tone: "ok", title: L(T.rightAnswer), text: [L(t.formulate.dataHint)] });
+    } else if (phase === "3") {
+      const k = choices3.findIndex((c) => c.correct);
+      if (c3 !== null && c3 !== k) setOut3((s) => new Set(s).add(c3));
+      setC3(k);
+      bump("interpret", { skipped: true });
+      setSheet({ tone: "ok", title: L(T.rightAnswer), text: [L(choices3[k].text)] });
+    }
+  };
+
   const hint = () => {
     setSheet(null);
     bump("employ", { hints: Math.min(2, track.employ.hints + 1) });
@@ -427,8 +450,8 @@ export function Lesson({ inst, lang, onDone, onExit, exam }: Props) {
                       </button>
                     )}
                     {phase !== "2" && (
-                      <button type="button" className="btn-link self-center" onClick={next}>
-                        {phase === "3" ? L(T.finish) : L(T.next)}
+                      <button type="button" className="btn-link self-center" onClick={skip}>
+                        {L(T.rightAnswer)}
                       </button>
                     )}
                   </>

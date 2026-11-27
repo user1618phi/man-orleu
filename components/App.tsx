@@ -8,7 +8,7 @@ import { Badge, IconArrow, IconBang, IconCheck, IconCloud } from "./Icons";
 import { instantiate, seedFor, getTemplate, type Instance } from "@/lib/engine";
 import { TEMPLATES } from "@/lib/templates";
 import { ERROR_NAME, STAGE_NAME, T, levelWord } from "@/lib/i18n";
-import { addAttempts, loadAttempts, loadOutbox, loadSettings, saveOutbox, saveSettings, syncOutbox, type Settings } from "@/lib/store";
+import { addAttempts, loadAttempts, loadOutbox, loadSettings, saveOutbox, saveSettings, syncOutbox, syncOutboxReport, type Settings, type SyncState } from "@/lib/store";
 import { encodeSummary, pct, summarize, weakest } from "@/lib/profile";
 import { STAGES, type Attempt, type L, type Lang, type Level, type OutboxItem } from "@/lib/types";
 import { EXAM_MAX, EXAM_TEMPLATES, examSeed, loadExam, saveExam, type ExamScores, type Form } from "@/lib/exam";
@@ -131,8 +131,8 @@ export function App() {
     go("result");
   };
 
-  const enqueue = async (reasoning: string) => {
-    if (!inst || !last) return;
+  const enqueue = async (reasoning: string): Promise<SyncState> => {
+    if (!inst || !last) return "idle";
     const item: OutboxItem = {
       id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
       templateId: inst.template.id,
@@ -146,7 +146,9 @@ export function App() {
     const items = [...outbox, item];
     await saveOutbox(items);
     setOutbox(items);
-    setOutbox(await syncOutbox());
+    const r = await syncOutboxReport();
+    setOutbox(r.items);
+    return r.state;
   };
 
   const startExam = (form: Form) => {
@@ -226,7 +228,15 @@ export function App() {
 
       {screen === "outbox" && (
         <SubPage title={L(T.aiReviews)} lang={lang} onBack={() => go("home")}>
-          <OutboxView items={outbox} lang={lang} onSync={async () => setOutbox(await syncOutbox())} />
+          <OutboxView
+            items={outbox}
+            lang={lang}
+            onSync={async () => {
+              const r = await syncOutboxReport();
+              setOutbox(r.items);
+              return r.state;
+            }}
+          />
         </SubPage>
       )}
 
@@ -329,6 +339,9 @@ function Onboard({ lang, name, onLang, onStart }: { lang: Lang; name: string; on
       <label className="flex flex-col gap-2">
         <span className="text-[15px] font-semibold">{T.yourName[lang]}</span>
         <input className="field-text" maxLength={20} value={v} placeholder={T.namePh[lang]} onChange={(e) => setV(e.target.value)} autoComplete="given-name" />
+        <span className="t-2 tnum">
+          {T.nameHint[lang]} · {v.length}/20
+        </span>
       </label>
       <button type="button" className="btn btn-primary" onClick={() => onStart(v.trim())}>
         {T.start[lang]}
@@ -504,6 +517,7 @@ const STATUS_TEXT: Record<StageStatus, L> = {
   retry: T.secondTry,
   hint: T.withHint,
   solution: T.withSolution,
+  skipped: T.skipped,
 };
 
 function ResultView({
@@ -521,12 +535,11 @@ function ResultView({
   onAnother: () => void;
   onNext: () => void;
   onHome: () => void;
-  onEnqueue: (r: string) => Promise<void>;
+  onEnqueue: (r: string) => Promise<SyncState>;
 }) {
-  const online = useOnline();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
-  const [sent, setSent] = useState(false);
+  const [sent, setSent] = useState<SyncState | null>(null);
   return (
     <div className="flex flex-col gap-4 pt-6">
       <div>
@@ -582,8 +595,7 @@ function ResultView({
             className="btn btn-primary"
             disabled={!text.trim()}
             onClick={async () => {
-              await onEnqueue(text.trim());
-              setSent(true);
+              setSent(await onEnqueue(text.trim()));
             }}
           >
             {T.send[lang]}
@@ -591,9 +603,11 @@ function ResultView({
         </div>
       )}
       {sent && (
-        <div className="flex items-center gap-3 rounded-[14px] bg-primary-soft px-4 py-3">
+        <div className={`flex items-center gap-3 rounded-[14px] px-4 py-3 ${sent === "unavailable" ? "bg-mark-soft" : "bg-primary-soft"}`}>
           <IconCloud className="shrink-0" />
-          <p className="text-[17px] leading-6">{online ? T.queuedOnline[lang] : T.queuedOffline[lang]}</p>
+          <p className="text-[17px] leading-6">
+            {sent === "sent" ? T.queuedOnline[lang] : sent === "unavailable" ? T.aiDown[lang] : T.queuedOffline[lang]}
+          </p>
         </div>
       )}
     </div>
@@ -619,8 +633,9 @@ function QrView({ code, lang }: { code: string; lang: Lang }) {
   );
 }
 
-function OutboxView({ items, lang, onSync }: { items: OutboxItem[]; lang: Lang; onSync: () => Promise<void> }) {
+function OutboxView({ items, lang, onSync }: { items: OutboxItem[]; lang: Lang; onSync: () => Promise<SyncState> }) {
   const [busy, setBusy] = useState(false);
+  const [state, setState] = useState<SyncState | null>(null);
   return (
     <>
       {items.length === 0 && <p className="text-[17px] leading-6 text-text-2">{T.noReviews[lang]}</p>}
@@ -665,12 +680,18 @@ function OutboxView({ items, lang, onSync }: { items: OutboxItem[]; lang: Lang; 
           disabled={busy}
           onClick={async () => {
             setBusy(true);
-            await onSync();
+            setState(null);
+            setState(await onSync());
             setBusy(false);
           }}
         >
-          {T.syncNow[lang]}
+          {busy ? "…" : T.syncNow[lang]}
         </button>
+      )}
+      {state && state !== "sent" && state !== "idle" && (
+        <p role="status" className="rounded-[14px] bg-mark-soft px-4 py-3 text-[17px] leading-6">
+          {state === "unavailable" ? T.aiDown[lang] : T.queuedOffline[lang]}
+        </p>
       )}
     </>
   );

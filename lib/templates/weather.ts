@@ -112,13 +112,13 @@ export const weather: TaskTemplate = {
         {
           text: { kk: "Иә, екі шарт та орындалды", ru: "Да, оба условия выполнены" },
           correct: yes,
-          errorType: yes ? undefined : "no_interpretation",
+          errorType: yes ? undefined : "ignored_condition",
           why: yes ? { kk: "Дұрыс: орташа да, ең суық күн де жеткілікті.", ru: "Верно: и среднее, и самый холодный день в норме." } : { kk: "Екі шартты да кестемен тексер.", ru: "Проверь оба условия по таблице." },
         },
         {
           text: { kk: "Жоқ: орташа температура төмен", ru: "Нет: средняя температура ниже нормы" },
           correct: lowMean,
-          errorType: lowMean ? undefined : "no_interpretation",
+          errorType: lowMean ? undefined : "wrong_data",
           why: lowMean ? { kk: "Дұрыс: орташа шарттан төмен.", ru: "Верно: среднее ниже условия." } : { kk: "Өз жауабыңды бірінші шартпен салыстыр.", ru: "Сравни свой ответ с первым условием." },
         },
         {

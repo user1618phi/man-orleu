@@ -28,7 +28,7 @@ export function StimulusView({ stimulus, params, lang, mode = "view", picked, on
     const on = picked?.has(r.id) ?? false;
     const isBad = bad?.has(r.id) ?? false;
     const hl = !select && (highlight?.has(r.id) ?? false);
-    const bg = isBad ? "bg-bad-soft" : on && select ? "bg-primary-soft" : hl ? "bg-primary-soft" : "";
+    const bg = isBad ? "bg-bad-soft" : on ? "bg-primary-soft" : hl ? "bg-primary-soft" : "";
     const className = `${bg} ${select ? "cursor-pointer" : ""}`;
     if (!select) return { className };
     return {

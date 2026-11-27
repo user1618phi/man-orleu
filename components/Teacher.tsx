@@ -37,13 +37,18 @@ const TT = {
   note: { kk: "Деректер тек осы құрылғыда сақталады. Сервер мен аккаунт жоқ.", ru: "Данные хранятся только на этом устройстве. Ни сервера, ни аккаунтов." },
   demoNote: { kk: "Демо-сынып: ойдан шығарылған деректер, пилот нәтижесі емес.", ru: "Демо-класс: вымышленные данные, не результат пилота." },
   print: { kk: "Сыныпқа нұсқаларды басып шығару", ru: "Напечатать варианты для класса" },
+  clearQ: { kk: "Оқушылар тізімін тазалау керек пе?", ru: "Очистить список учеников?" },
+  clearSub: { kk: "Осы құрылғыдағы барлық оқушы нәтижесі өшеді.", ru: "Результаты всех учеников на этом устройстве будут удалены." },
+  cancel: { kk: "Болдырмау", ru: "Отмена" },
+  clearYes: { kk: "Тазалау", ru: "Очистить" },
 } satisfies Record<string, L>;
 
 export function Teacher() {
   const [lang, setLang] = useState<Lang>("kk");
   const [list, setList] = useState<Summary[]>([]);
   const [code, setCode] = useState("");
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [msg, setMsg] = useState<{ ok: true; name: string } | { ok: false } | null>(null);
+  const [confirmClear, setConfirmClear] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [showCode, setShowCode] = useState(false);
   const [printing, setPrinting] = useState(false);
@@ -69,16 +74,17 @@ export function Teacher() {
   const addCode = (raw: string): boolean => {
     const s = decodeSummary(raw);
     if (!s) {
-      setMsg({ ok: false, text: L(TT.bad) });
+      setMsg({ ok: false });
       return false;
     }
     save([...list.filter((x) => x.name !== s.name), s]);
-    setMsg({ ok: true, text: `${s.name} — ${L(TT.added)}` });
+    setMsg({ ok: true, name: s.name });
     setCode("");
     return true;
   };
 
   const loadDemo = () => {
+    setMsg(null);
     const demo = demoClass();
     save([...demo, ...list.filter((x) => !demo.some((d) => d.name === x.name))]);
   };
@@ -157,10 +163,16 @@ export function Teacher() {
         <button type="button" className={`btn ${list.length ? "btn-secondary" : "btn-primary"} sm:!w-auto`} onClick={loadDemo}>
           {L(TT.demo)}
         </button>
-        <button type="button" className="btn btn-secondary" onClick={() => setScanning((v) => !v)}>
+        <button type="button" className="btn btn-secondary" onClick={() => {
+            setMsg(null);
+            setScanning((v) => !v);
+          }}>
           {scanning ? L(TT.stopScan) : L(TT.scan)}
         </button>
-        <button type="button" className="btn btn-secondary" onClick={() => setShowCode((v) => !v)}>
+        <button type="button" className="btn btn-secondary" onClick={() => {
+            setMsg(null);
+            setShowCode((v) => !v);
+          }}>
           {L(TT.enterCode)}
         </button>
       </div>
@@ -176,14 +188,22 @@ export function Teacher() {
         <label className="flex flex-col gap-2">
           <span className="text-[15px] font-semibold">{L(TT.code)}</span>
           <div className="flex gap-2">
-            <input className="field-text tnum" value={code} placeholder="M1.Айгерім.…" onChange={(e) => setCode(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addCode(code)} />
+            <input className="field-text tnum" value={code} placeholder="M1.Айгерім.…" onChange={(e) => {
+                setMsg(null);
+                setCode(e.target.value);
+              }}
+              onKeyDown={(e) => e.key === "Enter" && addCode(code)} />
             <button type="button" className="btn btn-primary !w-auto shrink-0" disabled={!code.trim()} onClick={() => addCode(code)}>
               {L(TT.add)}
             </button>
           </div>
         </label>
       )}
-      {msg && <p className={`rounded-[14px] px-4 py-3 text-[17px] font-semibold ${msg.ok ? "bg-ok-soft text-ok" : "bg-bad-soft text-bad"}`}>{msg.text}</p>}
+      {msg && (
+        <p role="status" className={`rounded-[14px] px-4 py-3 text-[17px] font-semibold ${msg.ok ? "bg-ok-soft text-ok" : "bg-bad-soft text-bad"}`}>
+          {msg.ok ? `${msg.name} — ${L(TT.added)}` : L(TT.bad)}
+        </p>
+      )}
 
       {list.length === 0 ? (
         <p className="text-[17px] leading-6 text-text-2">{L(TT.emptyHint)}</p>
@@ -315,7 +335,7 @@ export function Teacher() {
               </tbody>
             </table>
           </div>
-          <button type="button" className="btn-link self-start" onClick={() => save([])}>
+          <button type="button" className="btn-link self-start" onClick={() => setConfirmClear(true)}>
             {L(TT.clear)}
           </button>
         </>
@@ -328,6 +348,31 @@ export function Teacher() {
       <LocalTask lang={lang} />
 
       <p className="t-2 mt-4">{L(TT.note)}</p>
+
+      {confirmClear && (
+        <div className="fixed inset-0 z-40 flex items-end bg-black/30" onClick={() => setConfirmClear(false)}>
+          <div className="sheet-in mx-auto w-full max-w-[480px] rounded-t-[20px] bg-surface px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-5" onClick={(e) => e.stopPropagation()}>
+            <p className="h-card">{L(TT.clearQ)}</p>
+            <p className="t-2 mt-1">{L(TT.clearSub)}</p>
+            <div className="mt-4 flex flex-col gap-2">
+              <button type="button" className="btn btn-primary" onClick={() => setConfirmClear(false)}>
+                {L(TT.cancel)}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary w-full !text-bad"
+                onClick={() => {
+                  save([]);
+                  setMsg(null);
+                  setConfirmClear(false);
+                }}
+              >
+                {L(TT.clearYes)}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

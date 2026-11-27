@@ -35,11 +35,19 @@ export async function saveOutbox(items: OutboxItem[]): Promise<void> {
   await set(K.outbox, items.slice(-50));
 }
 
+export type SyncState = "sent" | "unavailable" | "offline" | "idle";
+
 /** Sends queued reasoning to /api/explain. Anything that is not a 200 stays queued. */
 export async function syncOutbox(): Promise<OutboxItem[]> {
+  return (await syncOutboxReport()).items;
+}
+
+export async function syncOutboxReport(): Promise<{ items: OutboxItem[]; state: SyncState }> {
   const items = await loadOutbox();
-  if (typeof navigator !== "undefined" && !navigator.onLine) return items;
+  if (!items.some((i) => i.status === "queued")) return { items, state: "idle" };
+  if (typeof navigator !== "undefined" && !navigator.onLine) return { items, state: "offline" };
   let changed = false;
+  let failed = false;
   for (const it of items) {
     if (it.status !== "queued") continue;
     try {
@@ -52,7 +60,10 @@ export async function syncOutbox(): Promise<OutboxItem[]> {
         signal: ctrl.signal,
       });
       clearTimeout(timer);
-      if (!res.ok) continue;
+      if (!res.ok) {
+        failed = true;
+        continue;
+      }
       const data: unknown = await res.json();
       if (isResult(data)) {
         it.status = "done";
@@ -60,11 +71,11 @@ export async function syncOutbox(): Promise<OutboxItem[]> {
         changed = true;
       }
     } catch {
-      // stays queued
+      failed = true; // stays queued
     }
   }
   if (changed) await saveOutbox(items);
-  return items;
+  return { items, state: failed ? "unavailable" : "sent" };
 }
 
 function isResult(x: unknown): x is NonNullable<OutboxItem["result"]> {
