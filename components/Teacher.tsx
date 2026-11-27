@@ -86,12 +86,16 @@ export function Teacher() {
   const agg = useMemo(() => {
     const stages = Object.fromEntries(STAGES.map((s) => [s, { ok: 0, total: 0 }])) as Summary["stages"];
     const studentsWith = Object.fromEntries(ERROR_TYPES.map((e) => [e, 0])) as Record<ErrorType, number>;
+    const totals = Object.fromEntries(ERROR_TYPES.map((e) => [e, 0])) as Record<ErrorType, number>;
     for (const st of list) {
       for (const s of STAGES) {
         stages[s].ok += st.stages[s].ok;
         stages[s].total += st.stages[s].total;
       }
-      for (const e of ERROR_TYPES) if (st.errors[e] > 0) studentsWith[e]++;
+      for (const e of ERROR_TYPES) {
+        totals[e] += st.errors[e];
+        if (st.errors[e] > 0) studentsWith[e]++;
+      }
     }
     let weak: Stage | null = null;
     let low = 101;
@@ -102,9 +106,9 @@ export function Teacher() {
         weak = s;
       }
     }
-    const top = ERROR_TYPES.filter((e) => e !== "calc_slip")
-      .map((e) => [e, studentsWith[e]] as const)
-      .sort((a, b) => b[1] - a[1])[0];
+    // Most frequent mistake by count; shown with how many students made it (at least 3 to call it typical).
+    const topType = ERROR_TYPES.filter((e) => e !== "calc_slip").sort((a, b) => totals[b] - totals[a])[0];
+    const top = topType ? ([topType, studentsWith[topType]] as const) : undefined;
     const topError = top && top[1] >= 3 ? top : null;
     const help = weak
       ? [...list]
@@ -285,9 +289,10 @@ export function Teacher() {
               <thead>
                 <tr>
                   <th className="t-2 border-b border-line px-4 py-2 text-left font-normal">{lang === "kk" ? "Аты" : "Имя"}</th>
-                  {STAGES.map((s) => (
+                  {STAGES.map((s, i) => (
                     <th key={s} className="t-2 border-b border-line px-2 py-2 text-right font-normal">
-                      {STAGE_NAME[s][lang]}
+                      <span className="sm:hidden">{i + 1}</span>
+                      <span className="hidden sm:inline">{STAGE_NAME[s][lang]}</span>
                     </th>
                   ))}
                 </tr>
@@ -295,13 +300,13 @@ export function Teacher() {
               <tbody>
                 {list.map((st) => (
                   <tr key={st.name}>
-                    <td className="h-12 border-b border-line px-4 py-2 text-[17px]">{st.name}</td>
+                    <td className="h-12 border-b border-line py-2 pl-4 pr-1 text-[17px]">{st.name}</td>
                     {STAGES.map((s) => {
                       const v = pct(st.stages[s]);
                       const tone = v === null ? "" : v < 50 ? "bg-bad-soft text-bad" : v < 80 ? "" : "bg-ok-soft text-ok";
                       return (
                         <td key={s} className="border-b border-line px-2 py-2 text-right">
-                          <span className={`tnum inline-block min-w-[52px] rounded-full px-2 py-0.5 text-center text-[17px] font-bold ${tone}`}>{v === null ? "—" : `${v}%`}</span>
+                          <span className={`tnum inline-block min-w-[48px] rounded-full px-2 py-0.5 text-center text-[17px] font-bold ${tone}`}>{v === null ? "—" : `${v}%`}</span>
                         </td>
                       );
                     })}
