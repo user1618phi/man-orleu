@@ -1,5 +1,5 @@
 // Hand-written service worker. Lesson must work in airplane mode after the first visit.
-const VERSION = "man-v1";
+const VERSION = "man-v2";
 const SHELL = ["/", "/teacher", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png", "/apple-touch-icon.png"];
 
 // Pull every /_next/static asset referenced by a shell page, so chunks loaded
@@ -37,6 +37,11 @@ self.addEventListener("activate", (event) => {
 // The page sends the list of resources it already loaded (performance entries).
 self.addEventListener("message", (event) => {
   const data = event.data;
+  // Refresh both shell pages and their chunks after a new deploy (sw.js itself may be unchanged).
+  if (data && data.type === "refresh-shell") {
+    event.waitUntil(caches.open(VERSION).then((cache) => Promise.all(["/", "/teacher"].map((u) => precachePage(cache, u).catch(() => undefined)))));
+    return;
+  }
   if (!data || data.type !== "cache-urls" || !Array.isArray(data.urls)) return;
   event.waitUntil(
     caches.open(VERSION).then((cache) =>

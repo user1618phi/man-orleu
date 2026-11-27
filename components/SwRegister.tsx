@@ -18,6 +18,7 @@ export function SwRegister() {
       .then(async () => {
         const reg = await navigator.serviceWorker.ready;
         sendLoaded(reg.active);
+        if (navigator.onLine) reg.active?.postMessage({ type: "refresh-shell" });
       })
       .catch(() => undefined);
   }, []);
