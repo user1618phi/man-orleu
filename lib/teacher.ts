@@ -2,7 +2,7 @@ import { mulberry32 } from "./rng";
 import { ERROR_TYPES, STAGES, type ErrorType, type L, type Stage } from "./types";
 import type { Summary } from "./profile";
 
-const NAMES = [
+export const DEMO_NAMES = [
   "Айгерім", "Нұрлан", "Даниял", "Әлия", "Арман", "Сәуле", "Ербол", "Асқар", "Дана", "Мадина", "Ернар", "Жансая",
   "Бекзат", "Аружан", "Темірлан", "Інжу", "Алихан", "Томирис", "Санжар", "Камила", "Нұрислам", "Айым", "Рауан", "Меруерт",
 ];
@@ -10,7 +10,7 @@ const NAMES = [
 /** A believable class: computes fine, struggles to formulate. Deterministic. */
 export function demoClass(): Summary[] {
   const rng = mulberry32(2026);
-  return NAMES.map((name) => {
+  return DEMO_NAMES.map((name) => {
     const n = 6 + Math.floor(rng() * 7);
     const rate: Record<Stage, number> = {
       formulate: 0.25 + rng() * 0.45,

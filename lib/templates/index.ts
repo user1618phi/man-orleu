@@ -7,5 +7,7 @@ import { medicine } from "./medicine";
 import { recipe } from "./recipe";
 import { hay } from "./hay";
 import { power } from "./power";
+import { weather } from "./weather";
+import { map } from "./map";
 
-export const TEMPLATES: TaskTemplate[] = [bus, shop, internet, credit, medicine, recipe, hay, power];
+export const TEMPLATES: TaskTemplate[] = [bus, shop, internet, credit, medicine, recipe, hay, power, weather, map];

@@ -4,7 +4,7 @@ import { TEMPLATES } from "../lib/templates";
 import { allCells, instantiate, checkEmploy } from "../lib/engine";
 import type { L } from "../lib/types";
 
-const SEEDS = 200;
+const SEEDS = Number(process.env.SEEDS ?? 200);
 let failures = 0;
 const fail = (msg: string) => {
   failures++;

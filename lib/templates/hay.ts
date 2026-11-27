@@ -19,7 +19,7 @@ export const hay: TaskTemplate = {
       const price = pick(rng, [1500, 1800, 2000, 2500]);
       const budget = Math.round((need * price * pick(rng, [0.85, 0.92, 1.08, 1.15])) / 10000) * 10000;
       if (Math.abs(budget - need * price) < 1) continue;
-      if (!distinct([need, Math.floor(exact), kg, Math.ceil((Q * H) / B), exact], 0.02)) continue;
+      if (!distinct([need, Math.floor(exact), kg, Math.ceil((Q * H) / B), exact], 0.05)) continue;
       return { Q, H, D, B, price, budget };
     }
   },

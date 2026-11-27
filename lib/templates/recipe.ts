@@ -17,7 +17,7 @@ export const recipe: TaskTemplate = {
       const need = (F * G) / N;
       if (!Number.isInteger(need)) continue;
       if (Math.abs(need - bag * 1000) < 1) continue;
-      if (!distinct([need, G / N, (F * N) / G, F + (G - N), need / 1000], 0.02)) continue;
+      if (!distinct([need, G / N, (F * N) / G, F + (G - N), need / 1000], 0.05)) continue;
       return { N, G, F, bag, milk: (F / 2) | 0 };
     }
   },

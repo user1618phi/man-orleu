@@ -15,7 +15,7 @@ export const internet: TaskTemplate = {
       const X = pick(rng, [5, 8, 10]);
       const p = { U, Q, P, X };
       if (Math.abs(P - cost) < 50) continue;
-      if (!distinct([cost, U * Q, U * 100 * Q, U * 1000, (U * 1000) / Q])) continue;
+      if (!distinct([cost, U * Q, U * 100 * Q, U * 1000, (U * 1000) / Q], 1.1)) continue;
       return p;
     }
   },

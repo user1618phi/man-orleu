@@ -6,7 +6,7 @@ import jsQR from "jsqr";
 import { NetBadge } from "./NetBadge";
 import { LocalTask } from "./LocalTask";
 import { decodeSummary, pct, type Summary } from "@/lib/profile";
-import { demoClass, ERROR_TIP, STAGE_TIP } from "@/lib/teacher";
+import { DEMO_NAMES, demoClass, ERROR_TIP, STAGE_TIP } from "@/lib/teacher";
 import { ERROR_NAME, STAGE_NAME } from "@/lib/i18n";
 import { EXAM_MAX } from "@/lib/exam";
 import { loadSettings } from "@/lib/store";
@@ -192,6 +192,11 @@ export function Teacher() {
                 <p className="label">
                   {lang === "kk" ? "Сол алты есеп, басқа сандар — жауап жаттап алу мүмкін емес." : "Те же шесть задач с другими числами — выучить ответы нельзя."}
                 </p>
+                {list.some((x) => DEMO_NAMES.includes(x.name)) && (
+                  <p className="mark warn whitespace-normal">
+                    {lang === "kk" ? "демо-сынып: ойдан шығарылған деректер, пилот нәтижесі емес" : "демо-класс: вымышленные данные, не результат пилота"}
+                  </p>
+                )}
               </section>
             )}
 

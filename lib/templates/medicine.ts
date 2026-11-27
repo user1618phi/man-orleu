@@ -16,7 +16,7 @@ export const medicine: TaskTemplate = {
       if (Math.abs(ml * 2 - Math.round(ml * 2)) > 1e-9) continue;
       if (ml < 2.5 || ml > 20) continue;
       if (Math.abs(ml * 9 - V) < 1) continue;
-      if (!distinct([ml, W * D, (W * D) / C, ml * 3], 0.1)) continue;
+      if (!distinct([ml, W * D, (W * D) / C, ml * 3], 0.2)) continue;
       return { W, D, C, V };
     }
   },
