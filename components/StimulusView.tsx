@@ -62,7 +62,7 @@ export function StimulusView({ stimulus, params, lang, mode = "view", picked, on
 
   const val = (text: string, right?: boolean) =>
     isNum(text) ? (
-      <span className={`tnum whitespace-nowrap text-[19px] font-bold leading-6 ${right ? "text-right" : ""}`}>{text}</span>
+      <span className={`tnum whitespace-nowrap ${select ? "text-[17px]" : "text-[19px]"} font-bold leading-6 ${right ? "text-right" : ""}`}>{text}</span>
     ) : (
       <span className={`text-[17px] leading-6 ${right ? "text-right" : ""}`}>{text}</span>
     );
@@ -90,9 +90,9 @@ export function StimulusView({ stimulus, params, lang, mode = "view", picked, on
               <table className="mt-1 w-full border-collapse">
                 <thead>
                   <tr>
-                    {select && <th className="w-10" aria-hidden />}
+                    {select && <th className="w-9" aria-hidden />}
                     {s.head.map((h, j) => (
-                      <th key={j} className={`t-2 border-b border-line px-2 py-2 text-left font-normal ${j === 0 && !select ? "pl-4" : ""}`}>
+                      <th key={j} className={`t-2 border-b border-line py-2 text-left font-normal [overflow-wrap:anywhere] ${select ? "px-1" : "px-2"} ${j === 0 && !select ? "pl-4" : ""}`}>
                         {h[lang]}
                       </th>
                     ))}
@@ -101,9 +101,9 @@ export function StimulusView({ stimulus, params, lang, mode = "view", picked, on
                 <tbody>
                   {body.map((r) => (
                     <tr key={r.id} {...rowProps(r)}>
-                      {select && <td className="border-b border-line py-3 pl-4 pr-1 align-middle">{box(r)}</td>}
+                      {select && <td className="border-b border-line py-3 pl-3 pr-1 align-middle">{box(r)}</td>}
                       {r.cells.map((c, j) => (
-                        <td key={c.id} className={`h-12 border-b border-line px-2 py-2 align-middle ${j === 0 && !select ? "pl-4" : ""}`}>
+                        <td key={c.id} className={`h-12 border-b border-line py-2 align-middle ${select ? "px-1" : "px-2"} ${j === 0 && !select ? "pl-4" : ""}`}>
                           {val(c.text(params)[lang])}
                         </td>
                       ))}
