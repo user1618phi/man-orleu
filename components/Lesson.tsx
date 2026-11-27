@@ -168,7 +168,7 @@ export function Lesson({ inst, lang, onDone, onExit, exam }: Props) {
           <label className="flex items-center gap-3">
             <span className="sr-only">{L(T.yourAnswer)}</span>
             <input
-              className="field num !text-[28px] !py-3"
+              className="field num min-w-0 flex-1 !w-auto !text-[28px] !py-3"
               inputMode="decimal"
               autoComplete="off"
               enterKeyHint="done"
@@ -178,7 +178,7 @@ export function Lesson({ inst, lang, onDone, onExit, exam }: Props) {
               onKeyDown={(e) => e.key === "Enter" && check2()}
               aria-invalid={inputErr}
             />
-            <span className="num text-[22px] text-mut">{L(t.employ.unit)}</span>
+            <span className="num shrink-0 text-[22px] text-mut">{L(t.employ.unit)}</span>
           </label>
           {inputErr && <p className="mark warn">{L(T.badNumber)}</p>}
           {fb2 && <FeedbackView fb={fb2} lang={lang} />}
