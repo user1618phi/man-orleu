@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { StimulusView } from "./StimulusView";
 import { Badge, IconBang, IconBulb, IconCheck, IconCross } from "./Icons";
-import { checkData, checkEmploy, choiceOrder, type Instance } from "@/lib/engine";
+import { checkData, checkEmploy, choiceOrder, dataRows, type Instance } from "@/lib/engine";
 import { ERROR_NAME, STAGE_NAME, T } from "@/lib/i18n";
 import { num, parseAnswer } from "@/lib/format";
 import type { Attempt, ErrorType, L, Lang, Stage } from "@/lib/types";
@@ -29,6 +29,8 @@ type Sheet = { tone: "ok" | "bad"; title: string; text: string[] } | null;
 type Track = { tries: number; hints: number; solution: boolean; firstErr?: ErrorType; first?: boolean };
 
 const stamp = () => Date.now();
+/** Template explanations start with "Верно:" / "Дұрыс:"; the sheet title already says it. */
+const plain = (x: string) => x.replace(/^(Верно|Дұрыс)[:.!]?\s*/u, "").replace(/^./u, (c) => c.toUpperCase());
 const STAGE_OF: Record<Phase, Stage> = { "1a": "formulate", "1b": "formulate", "2": "employ", "3": "interpret" };
 
 export function Lesson({ inst, lang, onDone, onExit, exam }: Props) {
@@ -98,7 +100,7 @@ export function Lesson({ inst, lang, onDone, onExit, exam }: Props) {
       setPhase("1b");
       return;
     }
-    if (ch.correct) setSheet({ tone: "ok", title: L(T.correct), text: [L(ch.why)] });
+    if (ch.correct) setSheet({ tone: "ok", title: L(T.correct), text: [plain(L(ch.why))] });
     else setSheet({ tone: "bad", title: L(ERROR_NAME[ch.errorType ?? "no_interpretation"]), text: [L(ch.why)] });
   };
 
@@ -161,7 +163,7 @@ export function Lesson({ inst, lang, onDone, onExit, exam }: Props) {
       return;
     }
     record("interpret", ch.correct, err);
-    if (ch.correct) setSheet({ tone: "ok", title: L(T.correct), text: [L(ch.why)] });
+    if (ch.correct) setSheet({ tone: "ok", title: L(T.correct), text: [plain(L(ch.why))] });
     else {
       bump("interpret", { tries: track.interpret.tries + 1 });
       setSheet({ tone: "bad", title: L(ERROR_NAME[err ?? "no_interpretation"]), text: [L(ch.why)] });
@@ -214,7 +216,8 @@ export function Lesson({ inst, lang, onDone, onExit, exam }: Props) {
     if (i > stageIdx) return 0;
     return phase === "1b" ? 50 : 15;
   };
-  const highlight = phase === "2" || phase === "3" ? picked : undefined;
+  const traps = useMemo(() => new Set(dataRows(inst.stimulus).flat().filter((r) => r.trap).map((r) => r.id)), [inst.stimulus]);
+  const highlight = phase === "2" || phase === "3" ? new Set([...picked].filter((id) => !traps.has(id))) : undefined;
 
   return (
     <div className="min-h-dvh">
