@@ -1,5 +1,5 @@
 import { mulberry32 } from "./rng";
-import type { Cell, Choice, ErrorType, Level, Params, Stimulus, TaskTemplate } from "./types";
+import type { Cell, Choice, ErrorType, L, Level, Params, Stimulus, TaskTemplate } from "./types";
 import { TEMPLATES } from "./templates";
 
 export function levelOf(seed: number): Level {
@@ -85,4 +85,42 @@ export function choiceOrder(seed: number, n: number, salt: number): number[] {
     [idx[i], idx[j]] = [idx[j], idx[i]];
   }
   return idx;
+}
+
+/** A row the student can tap on step 1B: a table row, a receipt line, a card fact or a footnote. */
+export interface DataRow {
+  id: string;
+  cells: Cell[];
+  label?: L;
+  needed: boolean;
+  trap: boolean;
+}
+
+export function dataRows(stimulus: Stimulus[]): DataRow[][] {
+  return stimulus.map((s) => {
+    const rows: DataRow[] = [];
+    const mk = (cells: Cell[], label?: L): DataRow => ({ id: cells[0].id, cells, label, needed: cells.some((c) => c.needed), trap: cells.some((c) => !!c.trap) });
+    if (s.kind === "table") s.rows.forEach((r) => rows.push(mk(r)));
+    if (s.kind === "receipt") s.lines.forEach((l) => rows.push(mk([l.value], l.label)));
+    if (s.kind === "card") s.facts.forEach((f) => rows.push(mk([f.value], f.label)));
+    if (s.kind !== "card" && s.footnote) rows.push(mk([s.footnote]));
+    return rows;
+  });
+}
+
+export interface DataVerdict {
+  correct: boolean;
+  errorType?: ErrorType;
+  extra: DataRow[];
+  missing: number;
+}
+
+/** Wrong if a trap row is picked or a needed row is missing; other extra rows are harmless. */
+export function checkData(inst: Instance, picked: Set<string>): DataVerdict {
+  const rows = dataRows(inst.stimulus).flat();
+  const extra = rows.filter((r) => r.trap && picked.has(r.id));
+  const missing = rows.filter((r) => r.needed && !picked.has(r.id)).length;
+  if (extra.length) return { correct: false, errorType: "wrong_data", extra, missing };
+  if (missing) return { correct: false, errorType: "ignored_condition", extra, missing };
+  return { correct: true, extra, missing };
 }

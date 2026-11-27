@@ -1,39 +1,43 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { get, set } from "idb-keyval";
-import jsQR from "jsqr";
-import { NetBadge } from "./NetBadge";
 import { LocalTask } from "./LocalTask";
+import { Scanner } from "./Scanner";
+import { PrintSheets } from "./PrintSheets";
+import { Badge, IconBang, IconBulb } from "./Icons";
 import { decodeSummary, pct, type Summary } from "@/lib/profile";
 import { DEMO_NAMES, demoClass, ERROR_TIP, STAGE_TIP } from "@/lib/teacher";
-import { ERROR_NAME, STAGE_NAME } from "@/lib/i18n";
+import { ERROR_NAME, STAGE_NAME, levelWord } from "@/lib/i18n";
 import { EXAM_MAX } from "@/lib/exam";
 import { loadSettings } from "@/lib/store";
-import { ERROR_TYPES, STAGES, type ErrorType, type Lang, type Stage } from "@/lib/types";
+import { ERROR_TYPES, STAGES, type ErrorType, type L, type Lang, type Stage } from "@/lib/types";
 
 const KEY = "man:class";
 
 const TT = {
-  title: { kk: "Сынып\nқай қадамда қиналады", ru: "На каком шаге\nтеряется класс" },
+  title: { kk: "Мұғалім панелі", ru: "Панель учителя" },
+  toStudent: { kk: "Оқушыға", ru: "Ученику" },
   demo: { kk: "Демо-сыныпты жүктеу", ru: "Загрузить демо-класс" },
   scan: { kk: "QR сканерлеу", ru: "Сканировать QR" },
-  stop: { kk: "Тоқтату", ru: "Остановить" },
-  code: { kk: "оқушы коды", ru: "код ученика" },
+  stopScan: { kk: "Сканерді жабу", ru: "Закрыть сканер" },
+  enterCode: { kk: "Кодты енгізу", ru: "Ввести код" },
+  code: { kk: "Оқушы коды", ru: "Код ученика" },
   add: { kk: "Қосу", ru: "Добавить" },
-  bad: { kk: "Код қате — қайта тексеріңіз", ru: "Код не распознан — проверьте" },
+  bad: { kk: "Код танылмады — тексеріңіз", ru: "Код не распознан — проверьте" },
   added: { kk: "қосылды", ru: "добавлен" },
+  emptyHint: { kk: "Немесе оқушы телефонындағы QR-ды сканерлеңіз — интернет керек емес.", ru: "Или отсканируйте QR с телефона ученика — интернет не нужен." },
+  sinks: { kk: "Құлдырап тұр", ru: "Проседает" },
+  topError: { kk: "Сыныптың басты қатесі", ru: "Главная ошибка класса" },
+  ofStudents: { kk: "оқушының", ru: "из" },
+  tomorrow: { kk: "Ертең сабақта не істеу керек", ru: "Что сделать завтра на уроке" },
+  whoHelp: { kk: "Кімге көмектесу керек", ru: "Кому помочь" },
+  students: { kk: "Оқушылар", ru: "Ученики" },
   clear: { kk: "Тізімді тазалау", ru: "Очистить список" },
-  empty: { kk: "Әзірге оқушы жоқ. Оқушылар экрандағы QR-ды көрсетеді — интернет керек емес. Немесе демо-сыныпты жүктеңіз.", ru: "Пока нет учеников. Ученики показывают QR с экрана — интернет не нужен. Или загрузите демо-класс." },
-  students: { kk: "оқушы", ru: "учеников" },
-  answers: { kk: "жауап", ru: "ответов" },
-  errors: { kk: "жиі қателер", ru: "типичные ошибки" },
-  lesson: { kk: "ертеңгі сабаққа", ru: "приём на завтрашний урок" },
-  list: { kk: "оқушылар", ru: "ученики" },
-  noCam: { kk: "Камера қолжетімсіз — кодты қолмен енгізіңіз.", ru: "Камера недоступна — введите код вручную." },
-  toStudent: { kk: "оқушы режимі", ru: "режим ученика" },
   note: { kk: "Деректер тек осы құрылғыда сақталады. Сервер мен аккаунт жоқ.", ru: "Данные хранятся только на этом устройстве. Ни сервера, ни аккаунтов." },
-} as const;
+  demoNote: { kk: "Демо-сынып: ойдан шығарылған деректер, пилот нәтижесі емес.", ru: "Демо-класс: вымышленные данные, не результат пилота." },
+  print: { kk: "Сыныпқа нұсқаларды басып шығару", ru: "Напечатать варианты для класса" },
+} satisfies Record<string, L>;
 
 export function Teacher() {
   const [lang, setLang] = useState<Lang>("kk");
@@ -41,6 +45,9 @@ export function Teacher() {
   const [code, setCode] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [showCode, setShowCode] = useState(false);
+  const [printing, setPrinting] = useState(false);
+  const L = (l: L) => l[lang];
 
   useEffect(() => {
     void (async () => {
@@ -50,6 +57,10 @@ export function Teacher() {
     })();
   }, []);
 
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
+
   const save = (l: Summary[]) => {
     setList(l);
     void set(KEY, l);
@@ -58,25 +69,29 @@ export function Teacher() {
   const addCode = (raw: string): boolean => {
     const s = decodeSummary(raw);
     if (!s) {
-      setMsg({ ok: false, text: TT.bad[lang] });
+      setMsg({ ok: false, text: L(TT.bad) });
       return false;
     }
-    const next = [...list.filter((x) => x.name !== s.name), s];
-    save(next);
-    setMsg({ ok: true, text: `${s.name} — ${TT.added[lang]}` });
+    save([...list.filter((x) => x.name !== s.name), s]);
+    setMsg({ ok: true, text: `${s.name} — ${L(TT.added)}` });
     setCode("");
     return true;
   };
 
+  const loadDemo = () => {
+    const demo = demoClass();
+    save([...demo, ...list.filter((x) => !demo.some((d) => d.name === x.name))]);
+  };
+
   const agg = useMemo(() => {
     const stages = Object.fromEntries(STAGES.map((s) => [s, { ok: 0, total: 0 }])) as Summary["stages"];
-    const errors = Object.fromEntries(ERROR_TYPES.map((e) => [e, 0])) as Record<ErrorType, number>;
+    const studentsWith = Object.fromEntries(ERROR_TYPES.map((e) => [e, 0])) as Record<ErrorType, number>;
     for (const st of list) {
       for (const s of STAGES) {
         stages[s].ok += st.stages[s].ok;
         stages[s].total += st.stages[s].total;
       }
-      for (const e of ERROR_TYPES) errors[e] += st.errors[e];
+      for (const e of ERROR_TYPES) if (st.errors[e] > 0) studentsWith[e]++;
     }
     let weak: Stage | null = null;
     let low = 101;
@@ -87,281 +102,227 @@ export function Teacher() {
         weak = s;
       }
     }
-    const topErrors = ERROR_TYPES.map((e) => [e, errors[e]] as const)
-      .filter(([, n]) => n > 0)
-      .sort((a, b) => b[1] - a[1]);
-    const totalAnswers = STAGES.reduce((n, s) => n + stages[s].total, 0);
+    const top = ERROR_TYPES.filter((e) => e !== "calc_slip")
+      .map((e) => [e, studentsWith[e]] as const)
+      .sort((a, b) => b[1] - a[1])[0];
+    const topError = top && top[1] >= 3 ? top : null;
+    const help = weak
+      ? [...list]
+          .filter((x) => x.stages[weak!].total > 0)
+          .sort((a, b) => (pct(a.stages[weak!]) ?? 100) - (pct(b.stages[weak!]) ?? 100))
+          .slice(0, 4)
+      : [];
     const both = list.filter((x) => x.exam?.A !== undefined && x.exam?.B !== undefined);
     const avg = (f: "A" | "B") => (both.length ? Math.round((100 * both.reduce((n, x) => n + (x.exam?.[f] ?? 0), 0)) / (both.length * EXAM_MAX)) : null);
-    const exam = { n: both.length, before: avg("A"), after: avg("B") };
-    return { stages, weak, topErrors, totalAnswers, exam };
+    const totalAnswers = STAGES.reduce((n, s) => n + stages[s].total, 0);
+    return { stages, weak, topError, help, exam: { n: both.length, before: avg("A"), after: avg("B") }, totalAnswers };
   }, [list]);
 
-  const maxErr = agg.topErrors[0]?.[1] ?? 1;
+  const isDemo = list.some((x) => DEMO_NAMES.includes(x.name));
+
+  if (printing) return <PrintSheets lang={lang} onClose={() => setPrinting(false)} count={Math.max(list.length, 1)} names={list.map((x) => x.name)} />;
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-2xl flex-col px-4 pt-4">
-      <div className="panel sticky top-2 z-10 mb-8 flex items-center justify-between gap-3 px-4 py-3">
-        <span className="flex shrink-0 flex-col leading-none">
-          <span className="font-mono text-[20px] tracking-tight">мән</span>
-          <span className="label">{lang === "kk" ? "мұғалім" : "учитель"}</span>
-        </span>
-        <NetBadge lang={lang} queued={0} />
-        <button type="button" className="btn shrink-0 !min-h-[40px] !px-3 !py-1 font-mono !text-[13px]" onClick={() => setLang(lang === "kk" ? "ru" : "kk")}>
-          {lang === "kk" ? "рус" : "қаз"}
+    <div className="mx-auto flex min-h-dvh max-w-[960px] flex-col gap-4 px-4 pb-12 pt-4">
+      <header className="flex items-center gap-3">
+        <span className="text-[26px] font-extrabold tracking-tight text-primary">Мән</span>
+        <span className="flex-1" />
+        {/* Full navigation on purpose: client-side transitions need RSC requests that fail offline. */}
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+        <a className="inline-flex min-h-12 items-center px-1 text-[15px] font-semibold underline decoration-line underline-offset-4" href="/">
+          {L(TT.toStudent)}
+        </a>
+        <div className="grid grid-cols-2 gap-1 rounded-[14px] border border-line bg-surface p-1">
+          {(["kk", "ru"] as const).map((l) => (
+            <button
+              key={l}
+              type="button"
+              aria-pressed={lang === l}
+              onClick={() => setLang(l)}
+              className={`min-h-10 rounded-[10px] px-3 text-[15px] font-semibold ${lang === l ? "bg-primary text-white" : "text-text-2"}`}
+            >
+              {l === "kk" ? "Қаз" : "Рус"}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      <h1 className="h-screen-title">{L(TT.title)}</h1>
+
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <button type="button" className={`btn ${list.length ? "btn-secondary" : "btn-primary"} sm:!w-auto`} onClick={loadDemo}>
+          {L(TT.demo)}
+        </button>
+        <button type="button" className="btn btn-secondary" onClick={() => setScanning((v) => !v)}>
+          {scanning ? L(TT.stopScan) : L(TT.scan)}
+        </button>
+        <button type="button" className="btn btn-secondary" onClick={() => setShowCode((v) => !v)}>
+          {L(TT.enterCode)}
         </button>
       </div>
-
-      <main className="flex flex-col gap-12 pb-16">
-        <h1 className="enter whitespace-pre-line text-[40px]">
-          {TT.title[lang].split("\n")[0]}
-          {"\n"}
-          <span className="text-acc-text">{TT.title[lang].split("\n")[1]}</span>
-        </h1>
-
-        <section className="flex flex-col gap-3">
-          <div className="flex flex-wrap gap-3">
-            <button type="button" className="btn primary" onClick={() => save([...demoClass(), ...list.filter((x) => !demoClass().some((d) => d.name === x.name))])}>
-              {TT.demo[lang]}
-            </button>
-            <button type="button" className="btn" onClick={() => setScanning((v) => !v)}>
-              {scanning ? TT.stop[lang] : TT.scan[lang]}
+      {scanning && (
+        <Scanner
+          lang={lang}
+          onCode={(c) => {
+            if (addCode(c)) setScanning(false);
+          }}
+        />
+      )}
+      {showCode && (
+        <label className="flex flex-col gap-2">
+          <span className="text-[15px] font-semibold">{L(TT.code)}</span>
+          <div className="flex gap-2">
+            <input className="field-text tnum" value={code} placeholder="M1.Айгерім.…" onChange={(e) => setCode(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addCode(code)} />
+            <button type="button" className="btn btn-primary !w-auto shrink-0" disabled={!code.trim()} onClick={() => addCode(code)}>
+              {L(TT.add)}
             </button>
           </div>
-          {scanning && (
-            <Scanner
-              lang={lang}
-              onCode={(c) => {
-                if (addCode(c)) setScanning(false);
-              }}
-            />
-          )}
-          <label className="flex flex-col gap-2">
-            <span className="label">{TT.code[lang]}</span>
-            <div className="flex gap-2">
-              <input className="field num" value={code} placeholder="M1.Айгерім.3-5.4-5.2-5.0-1-0-2-0-1-1.xx" onChange={(e) => setCode(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addCode(code)} />
-              <button type="button" className="btn" disabled={!code.trim()} onClick={() => addCode(code)}>
-                {TT.add[lang]}
-              </button>
-            </div>
-          </label>
-          {msg && <p className={`mark ${msg.ok ? "ok" : "bad"}`}>{msg.text}</p>}
-        </section>
+        </label>
+      )}
+      {msg && <p className={`rounded-[14px] px-4 py-3 text-[17px] font-semibold ${msg.ok ? "bg-ok-soft text-ok" : "bg-bad-soft text-bad"}`}>{msg.text}</p>}
 
-        {list.length === 0 ? (
-          <p className="text-mut">{TT.empty[lang]}</p>
-        ) : (
-          <>
-            <section className="flex flex-col gap-3">
-              <p className="label num">
-                {lang === "kk"
-                  ? `${list.length} ${TT.students.kk} · ${agg.totalAnswers} ${TT.answers.kk}`
-                  : `${TT.students.ru}: ${list.length} · ${TT.answers.ru}: ${agg.totalAnswers}`}
-              </p>
+      {list.length === 0 ? (
+        <p className="text-[17px] leading-6 text-text-2">{L(TT.emptyHint)}</p>
+      ) : (
+        <>
+          <p className="text-[17px] font-semibold">
+            {lang === "kk" ? `${list.length} оқушы · ${agg.totalAnswers} жауап` : `Учеников: ${list.length} · ответов: ${agg.totalAnswers}`}
+          </p>
+          {isDemo && <p className="rounded-[14px] bg-mark-soft px-4 py-2 text-[15px] font-semibold">{L(TT.demoNote)}</p>}
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {STAGES.map((s, i) => {
+              const v = pct(agg.stages[s]);
+              const weak = agg.weak === s;
+              return (
+                <div key={s} className={`card ${weak ? "!border-2 !border-bad" : ""}`}>
+                  <div className="flex items-center gap-2">
+                    <Badge tone={weak ? "bad" : "primary"} size={26}>
+                      <span className="text-[15px] font-bold">{i + 1}</span>
+                    </Badge>
+                    <span className="text-[17px] font-semibold">{STAGE_NAME[s][lang]}</span>
+                  </div>
+                  <p className="tnum mt-2 text-[40px] font-extrabold leading-none">{v === null ? "—" : `${v}%`}</p>
+                  <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-line">
+                    <div className={`h-full rounded-full ${weak ? "bg-bad" : "bg-primary"}`} style={{ width: `${v ?? 0}%` }} />
+                  </div>
+                  <p className={`mt-2 text-[15px] font-semibold ${weak ? "text-bad" : "text-text-2"}`}>{weak ? L(TT.sinks) : v !== null ? levelWord(v, lang) : ""}</p>
+                </div>
+              );
+            })}
+          </div>
+
+          {agg.topError && (
+            <div className="card flex gap-3 border-l-4 !border-l-bad">
+              <Badge tone="bad" size={28}>
+                <IconBang size={16} />
+              </Badge>
               <div>
-                {STAGES.map((s, i) => {
-                  const v = pct(agg.stages[s]);
-                  const weak = agg.weak === s;
-                  return (
-                    <div key={s} className="flex items-center gap-4 border-b border-line py-3 first:border-t">
-                      <span className="label num w-4">{i + 1}</span>
-                      <div className="flex-1">
-                        <p className="text-[17px]">{STAGE_NAME[s][lang]}</p>
-                        <div className="mt-2 h-[3px] w-full bg-line">
-                          <div className={`h-full ${weak ? "bg-acc" : "bg-fg"}`} style={{ width: `${v ?? 0}%` }} />
-                        </div>
-                      </div>
-                      <span className={`num text-[30px] ${weak ? "text-acc-text" : ""}`}>{v === null ? "—" : `${v}%`}</span>
-                    </div>
-                  );
-                })}
+                <p className="t-2">{L(TT.topError)}</p>
+                <p className="text-[20px] font-bold leading-[26px]">{ERROR_NAME[agg.topError[0]][lang]}</p>
+                <p className="mt-1 text-[17px]">
+                  {lang === "kk" ? `${list.length} оқушының ${agg.topError[1]}-інде` : `У ${agg.topError[1]} из ${list.length} учеников`}
+                </p>
               </div>
-            </section>
+            </div>
+          )}
 
-            {agg.exam.n > 0 && agg.exam.before !== null && agg.exam.after !== null && (
-              <section className="flex flex-col gap-3">
-                <p className="label num">
-                  {lang === "kk" ? `өлшеу: дейін → кейін · ${agg.exam.n} оқушы` : `замер: до → после · учеников: ${agg.exam.n}`}
-                </p>
-                <div className="flex items-baseline gap-4">
-                  <span className="num text-[30px] text-mut">{agg.exam.before}%</span>
-                  <span className="label">→</span>
-                  <span className="num text-[30px]">{agg.exam.after}%</span>
-                  <span className={`num text-[22px] ${agg.exam.after >= agg.exam.before ? "text-acc-text" : ""}`}>
-                    {agg.exam.after >= agg.exam.before ? "+" : ""}
-                    {agg.exam.after - agg.exam.before} {lang === "kk" ? "п.т." : "п.п."}
+          {agg.weak && (
+            <div className="card !border-primary-soft !bg-primary-soft">
+              <p className="t-2 !text-text">{L(TT.tomorrow)}</p>
+              <p className="h-card mt-1">{STAGE_TIP[agg.weak].title[lang]}</p>
+              <ol className="mt-3 flex flex-col gap-2">
+                {STAGE_TIP[agg.weak].steps.map((st, i) => (
+                  <li key={i} className="flex gap-3 text-[17px] leading-6">
+                    <span className="tnum font-extrabold text-primary-text">{i + 1}.</span>
+                    <span>{st[lang]}</span>
+                  </li>
+                ))}
+              </ol>
+              {agg.topError && (
+                <div className="mt-3 flex gap-3 rounded-[12px] bg-surface px-3 py-2">
+                  <IconBulb className="mt-0.5 shrink-0" />
+                  <p className="text-[17px] leading-6">{ERROR_TIP[agg.topError[0]][lang]}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {agg.help.length > 0 && agg.weak && (
+            <div className="card">
+              <p className="t-2">
+                {L(TT.whoHelp)} · {STAGE_NAME[agg.weak][lang]}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {agg.help.map((x) => (
+                  <span key={x.name} className="rounded-full bg-bad-soft px-3 py-1.5 text-[17px] font-semibold">
+                    {x.name} <span className="tnum text-bad">{pct(x.stages[agg.weak!])}%</span>
                   </span>
-                </div>
-                <p className="label">
-                  {lang === "kk" ? "Сол алты есеп, басқа сандар — жауап жаттап алу мүмкін емес." : "Те же шесть задач с другими числами — выучить ответы нельзя."}
-                </p>
-                {list.some((x) => DEMO_NAMES.includes(x.name)) && (
-                  <p className="mark warn whitespace-normal">
-                    {lang === "kk" ? "демо-сынып: ойдан шығарылған деректер, пилот нәтижесі емес" : "демо-класс: вымышленные данные, не результат пилота"}
-                  </p>
-                )}
-              </section>
-            )}
+                ))}
+              </div>
+            </div>
+          )}
 
-            {agg.topErrors.length > 0 && (
-              <section className="flex flex-col gap-3">
-                <p className="label">{TT.errors[lang]}</p>
-                <div>
-                  {agg.topErrors.slice(0, 5).map(([e, n]) => (
-                    <div key={e} className="flex items-center gap-4 border-b border-line py-2 first:border-t">
-                      <span className="flex-1 text-[16px]">{ERROR_NAME[e][lang]}</span>
-                      <span className="hidden h-[3px] w-24 bg-line sm:block">
-                        <span className="block h-full bg-fg" style={{ width: `${(100 * n) / maxErr}%` }} />
-                      </span>
-                      <span className="num w-10 text-right text-[18px]">{n}</span>
-                    </div>
+          {agg.exam.n > 0 && agg.exam.before !== null && agg.exam.after !== null && (
+            <div className="card">
+              <p className="t-2">{lang === "kk" ? `Өлшеу: дейін → кейін · ${agg.exam.n} оқушы` : `Замер: до → после · учеников: ${agg.exam.n}`}</p>
+              <div className="mt-2 flex items-baseline gap-3">
+                <span className="tnum text-[28px] font-extrabold text-text-2">{agg.exam.before}%</span>
+                <span className="text-[20px]">→</span>
+                <span className="tnum text-[28px] font-extrabold">{agg.exam.after}%</span>
+                <span className={`tnum rounded-full px-3 py-1 text-[17px] font-bold ${agg.exam.after >= agg.exam.before ? "bg-ok-soft text-ok" : "bg-bad-soft text-bad"}`}>
+                  {agg.exam.after >= agg.exam.before ? "+" : ""}
+                  {agg.exam.after - agg.exam.before} {lang === "kk" ? "п.т." : "п.п."}
+                </span>
+              </div>
+              <p className="t-2 mt-2">{lang === "kk" ? "Сол алты есеп, басқа сандар — жауапты жаттап алу мүмкін емес." : "Те же шесть задач с другими числами — выучить ответы нельзя."}</p>
+            </div>
+          )}
+
+          <div className="card overflow-x-auto !p-0">
+            <p className="px-4 pt-3 text-[17px] font-bold">{L(TT.students)}</p>
+            <table className="mt-2 w-full border-collapse">
+              <thead>
+                <tr>
+                  <th className="t-2 border-b border-line px-4 py-2 text-left font-normal">{lang === "kk" ? "Аты" : "Имя"}</th>
+                  {STAGES.map((s) => (
+                    <th key={s} className="t-2 border-b border-line px-2 py-2 text-right font-normal">
+                      {STAGE_NAME[s][lang]}
+                    </th>
                   ))}
-                </div>
-              </section>
-            )}
-
-            {agg.weak && (
-              <section className="flex flex-col gap-4 border-l-2 border-acc pl-4">
-                <p className="label">{TT.lesson[lang]}</p>
-                <h2 className="text-[24px]">{STAGE_TIP[agg.weak].title[lang]}</h2>
-                <ol className="flex list-none flex-col gap-2 p-0">
-                  {STAGE_TIP[agg.weak].steps.map((st, i) => (
-                    <li key={i} className="flex gap-3 text-[16px]">
-                      <span className="label num pt-0.5">{i + 1}</span>
-                      <span>{st[lang]}</span>
-                    </li>
-                  ))}
-                </ol>
-                {agg.topErrors[0] && <p className="mark info whitespace-normal">{ERROR_TIP[agg.topErrors[0][0]][lang]}</p>}
-              </section>
-            )}
-
-            <section className="flex flex-col gap-3">
-              <p className="label">{TT.list[lang]}</p>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-[15px]">
-                  <thead>
-                    <tr>
-                      <th className="label border-b border-line py-2 text-left font-normal">—</th>
-                      {STAGES.map((s) => (
-                        <th key={s} className="label border-b border-line py-2 text-right font-normal">
-                          {STAGE_NAME[s][lang].toLowerCase()}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {list.map((st) => {
-                      const weakest = STAGES.reduce<Stage>((a, s) => ((pct(st.stages[s]) ?? 100) < (pct(st.stages[a]) ?? 100) ? s : a), "employ");
+                </tr>
+              </thead>
+              <tbody>
+                {list.map((st) => (
+                  <tr key={st.name}>
+                    <td className="h-12 border-b border-line px-4 py-2 text-[17px]">{st.name}</td>
+                    {STAGES.map((s) => {
+                      const v = pct(st.stages[s]);
+                      const tone = v === null ? "" : v < 50 ? "bg-bad-soft text-bad" : v < 80 ? "" : "bg-ok-soft text-ok";
                       return (
-                        <tr key={st.name}>
-                          <td className="border-b border-line py-2">{st.name}</td>
-                          {STAGES.map((s) => {
-                            const v = pct(st.stages[s]);
-                            return (
-                              <td key={s} className={`num border-b border-line py-2 text-right ${s === weakest && (v ?? 100) < 60 ? "text-acc-text" : ""}`}>
-                                {v === null ? "—" : `${v}%`}
-                              </td>
-                            );
-                          })}
-                        </tr>
+                        <td key={s} className="border-b border-line px-2 py-2 text-right">
+                          <span className={`tnum inline-block min-w-[52px] rounded-full px-2 py-0.5 text-center text-[17px] font-bold ${tone}`}>{v === null ? "—" : `${v}%`}</span>
+                        </td>
                       );
                     })}
-                  </tbody>
-                </table>
-              </div>
-              <button type="button" className="link label self-start" onClick={() => save([])}>
-                {TT.clear[lang]}
-              </button>
-            </section>
-          </>
-        )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <button type="button" className="btn-link self-start" onClick={() => save([])}>
+            {L(TT.clear)}
+          </button>
+        </>
+      )}
 
-        <LocalTask lang={lang} />
+      <button type="button" className="btn btn-secondary w-full" onClick={() => setPrinting(true)}>
+        {L(TT.print)}
+      </button>
 
-        <footer className="flex flex-col gap-2 border-t border-line pt-4">
-          <p className="label">{TT.note[lang]}</p>
-          {/* Full navigation on purpose: client-side transitions need RSC requests that fail offline. */}
-          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-          <a className="link label self-start" href="/">
-            ← {TT.toStudent[lang]}
-          </a>
-        </footer>
-      </main>
+      <LocalTask lang={lang} />
+
+      <p className="t-2 mt-4">{L(TT.note)}</p>
     </div>
   );
-}
-
-interface DetectorLike {
-  detect: (src: HTMLVideoElement) => Promise<{ rawValue: string }[]>;
-}
-
-function Scanner({ lang, onCode }: { lang: Lang; onCode: (c: string) => void }) {
-  const video = useRef<HTMLVideoElement>(null);
-  const [err, setErr] = useState(false);
-  const cb = useRef(onCode);
-  useEffect(() => {
-    cb.current = onCode;
-  }, [onCode]);
-
-  useEffect(() => {
-    let stream: MediaStream | null = null;
-    let raf = 0;
-    let stopped = false;
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    const Ctor = (window as unknown as { BarcodeDetector?: new (o: { formats: string[] }) => DetectorLike }).BarcodeDetector;
-    const detector = Ctor ? new Ctor({ formats: ["qr_code"] }) : null;
-
-    const tick = async () => {
-      if (stopped) return;
-      const v = video.current;
-      if (v && v.readyState >= 2) {
-        let found: string | null = null;
-        if (detector) {
-          try {
-            const r = await detector.detect(v);
-            if (r[0]) found = r[0].rawValue;
-          } catch {
-            /* fall through to jsQR */
-          }
-        }
-        if (!found && ctx) {
-          canvas.width = v.videoWidth;
-          canvas.height = v.videoHeight;
-          ctx.drawImage(v, 0, 0);
-          const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const r = jsQR(img.data, img.width, img.height);
-          if (r) found = r.data;
-        }
-        if (found) {
-          cb.current(found);
-        }
-      }
-      raf = requestAnimationFrame(() => void tick());
-    };
-
-    (async () => {
-      if (!navigator.mediaDevices) throw new Error("no camera");
-      return navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-    })()
-      .then((s) => {
-        stream = s;
-        if (video.current) {
-          video.current.srcObject = s;
-          void video.current.play();
-        }
-        raf = requestAnimationFrame(() => void tick());
-      })
-      .catch(() => setErr(true));
-
-    return () => {
-      stopped = true;
-      cancelAnimationFrame(raf);
-      stream?.getTracks().forEach((t) => t.stop());
-    };
-  }, []);
-
-  if (err) return <p className="mark warn">{TT.noCam[lang]}</p>;
-  return <video ref={video} playsInline muted className="aspect-square w-full max-w-[320px] rounded-[18px] border border-line object-cover" />;
 }

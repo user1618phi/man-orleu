@@ -1,99 +1,139 @@
 "use client";
 
-import type { Cell, Lang, Params, Stimulus } from "@/lib/types";
+import { dataRows, type DataRow } from "@/lib/engine";
+import type { Lang, Params, Stimulus } from "@/lib/types";
+import { IconCheck, IconCross } from "./Icons";
 
 interface Props {
   stimulus: Stimulus[];
   params: Params;
   lang: Lang;
-  /** When set, cells can be tapped to mark them. */
+  /** "select": rows are buttons (step 1B). */
+  mode?: "view" | "select";
   picked?: Set<string>;
   onToggle?: (id: string) => void;
-  /** After the check: highlight needed cells and wrongly picked traps. */
-  reveal?: boolean;
+  /** Rows the student marked earlier; shown softly on later steps. */
+  highlight?: Set<string>;
+  /** Rows marked wrong after a check. */
+  bad?: Set<string>;
 }
 
-const isNum = (s: string) => /^[\d\s\u00a0:,.%₸°C+−-]+(мин|ай|мес|ГБ|МБ|кг|г|мл|л|°C)?$/.test(s.trim());
+const isNum = (s: string) => /^[\d\s :,.%₸°C+−-]+(мин|ай|мес|ГБ|МБ|кг|г|мл|л|см|м|°C|чел\.|адам)?$/.test(s.trim());
 
-export function StimulusView({ stimulus, params, lang, picked, onToggle, reveal }: Props) {
-  const cellState = (c: Cell) => {
-    const on = picked?.has(c.id) ?? false;
-    let cls = "";
-    if (reveal && c.needed && !on) cls = "outline outline-1 -outline-offset-1 outline-dashed outline-acc";
-    if (reveal && c.trap && on) cls = "outline outline-1 -outline-offset-1 outline-bad";
-    return { on, cls };
+export function StimulusView({ stimulus, params, lang, mode = "view", picked, onToggle, highlight, bad }: Props) {
+  const rowsBy = dataRows(stimulus);
+  const select = mode === "select" && !!onToggle;
+
+  const rowProps = (r: DataRow) => {
+    const on = picked?.has(r.id) ?? false;
+    const isBad = bad?.has(r.id) ?? false;
+    const hl = !select && (highlight?.has(r.id) ?? false);
+    const bg = isBad ? "bg-bad-soft" : on && select ? "bg-primary-soft" : hl ? "bg-primary-soft" : "";
+    const className = `${bg} ${select ? "cursor-pointer" : ""}`;
+    if (!select) return { className };
+    return {
+      className,
+      role: "button",
+      tabIndex: 0,
+      "aria-pressed": on,
+      onClick: () => onToggle?.(r.id),
+      onKeyDown: (e: React.KeyboardEvent) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onToggle?.(r.id);
+        }
+      },
+    };
   };
 
-  const CellView = ({ c, big }: { c: Cell; big?: boolean }) => {
-    const { on, cls } = cellState(c);
-    const text = c.text(params)[lang];
-    const base = `${big ? "num text-[19px]" : "text-[15px]"} leading-snug rounded-[10px] px-2 py-2 ${big ? "whitespace-nowrap" : ""} ${cls}`;
-    if (!onToggle) return <span className={`block ${base}`}>{text}</span>;
+  const box = (r: DataRow) => {
+    if (!select) return null;
+    const on = picked?.has(r.id) ?? false;
+    const isBad = bad?.has(r.id) ?? false;
     return (
-      <button type="button" aria-pressed={on} onClick={() => onToggle(c.id)} className={`cell-pick block w-full text-left ${base}`}>
-        {text}
-      </button>
+      <span
+        aria-hidden
+        className={`grid h-[22px] w-[22px] shrink-0 place-items-center rounded-[6px] border-2 ${isBad ? "border-bad bg-bad text-white" : on ? "border-primary bg-primary text-white" : "border-[#b9b3c2] bg-surface"}`}
+      >
+        {isBad ? <IconCross size={14} /> : on ? <IconCheck size={14} /> : null}
+      </span>
+    );
+  };
+
+  const val = (text: string, right?: boolean) =>
+    isNum(text) ? (
+      <span className={`tnum whitespace-nowrap text-[19px] font-bold leading-6 ${right ? "text-right" : ""}`}>{text}</span>
+    ) : (
+      <span className={`text-[17px] leading-6 ${right ? "text-right" : ""}`}>{text}</span>
+    );
+
+  const footRow = (r: DataRow, top: boolean) => {
+    const rp = rowProps(r);
+    return (
+      <div {...rp} className={`${rp.className} flex min-h-12 items-center gap-3 px-4 py-3 ${top ? "border-t border-line" : ""}`}>
+        {box(r)}
+        <span className="text-[15px] leading-5 text-text-2">* {r.cells[0].text(params)[lang]}</span>
+      </div>
     );
   };
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-3">
       {stimulus.map((s, i) => {
-        if (s.kind === "table")
+        const rows = rowsBy[i];
+        if (s.kind === "table") {
+          const body = rows.slice(0, s.rows.length);
+          const foot = s.footnote ? rows[s.rows.length] : null;
           return (
-            <figure key={i} className="m-0">
-              <figcaption className="label mb-2">{s.caption[lang]}</figcaption>
-              <table className="w-full border-collapse">
+            <div key={i} className="card overflow-hidden !p-0">
+              <p className="px-4 pt-3 text-[17px] font-bold">{s.caption[lang]}</p>
+              <table className="mt-1 w-full border-collapse">
                 <thead>
                   <tr>
+                    {select && <th className="w-10" aria-hidden />}
                     {s.head.map((h, j) => (
-                      <th key={j} className="label border-b border-line py-2 pr-2 text-left font-normal">
+                      <th key={j} className={`t-2 border-b border-line px-2 py-2 text-left font-normal ${j === 0 && !select ? "pl-4" : ""}`}>
                         {h[lang]}
                       </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {s.rows.map((r, j) => (
-                    <tr key={j}>
-                      {r.map((c) => (
-                        <td key={c.id} className="border-b border-line py-1 pr-2 align-middle">
-                          <CellView c={c} big={isNum(c.text(params)[lang])} />
+                  {body.map((r) => (
+                    <tr key={r.id} {...rowProps(r)}>
+                      {select && <td className="border-b border-line py-3 pl-4 pr-1 align-middle">{box(r)}</td>}
+                      {r.cells.map((c, j) => (
+                        <td key={c.id} className={`h-12 border-b border-line px-2 py-2 align-middle ${j === 0 && !select ? "pl-4" : ""}`}>
+                          {val(c.text(params)[lang])}
                         </td>
                       ))}
                     </tr>
                   ))}
                 </tbody>
               </table>
-              {s.footnote && (
-                <div className="mt-2 flex items-start gap-2">
-                  <span className="label pt-2">*</span>
-                  <CellView c={s.footnote} />
-                </div>
-              )}
-            </figure>
-          );
-        const rows = s.kind === "receipt" ? s.lines : s.facts;
-        return (
-          <figure key={i} className={`m-0 ${s.kind === "receipt" ? "border-y border-dashed border-line py-3" : ""}`}>
-            <figcaption className="label mb-2">{s.title[lang]}</figcaption>
-            <div>
-              {rows.map((row) => (
-                <div key={row.value.id} className="flex items-center justify-between gap-3 border-b border-line py-1 last:border-b-0">
-                  <span className="text-[15px] text-mut">{row.label[lang]}</span>
-                  <span className="max-w-[62%] shrink-0 text-right">
-                    <CellView c={row.value} big={isNum(row.value.text(params)[lang])} />
-                  </span>
-                </div>
-              ))}
+              {foot && footRow(foot, false)}
             </div>
-            {s.kind === "receipt" && s.footnote && (
-              <div className="mt-2 flex items-start gap-2">
-                <span className="label pt-2">*</span>
-                <CellView c={s.footnote} />
-              </div>
-            )}
-          </figure>
+          );
+        }
+        const main = s.kind === "receipt" ? rows.slice(0, s.lines.length) : rows;
+        const foot = s.kind === "receipt" && s.footnote ? rows[s.lines.length] : null;
+        return (
+          <div key={i} className={`card overflow-hidden !p-0 ${s.kind === "receipt" ? "border-dashed" : ""}`}>
+            <p className="px-4 pt-3 text-[17px] font-bold">{s.title[lang]}</p>
+            <div className="mt-2">
+              {main.map((r) => {
+                const rp = rowProps(r);
+                return (
+                  <div key={r.id} {...rp} className={`${rp.className} flex min-h-12 items-center gap-3 border-t border-line px-4 py-2`}>
+                    {box(r)}
+                    <span className="flex-1 text-[17px] leading-6 text-text-2">{r.label?.[lang]}</span>
+                    {val(r.cells[0].text(params)[lang], true)}
+                  </div>
+                );
+              })}
+              {foot && footRow(foot, true)}
+            </div>
+          </div>
         );
       })}
     </div>

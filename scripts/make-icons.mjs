@@ -18,7 +18,7 @@ function chunk(type, data) {
   return Buffer.concat([len, td, crc]);
 }
 function png(size) {
-  const bg = [0x9c, 0x43, 0xe5], fg = [0xff, 0xff, 0xff];
+  const bg = [0xa1, 0x2f, 0xf5], fg = [0xff, 0xff, 0xff];
   const raw = Buffer.alloc((size * 3 + 1) * size);
   const s0 = Math.round(size * 0.34), s1 = Math.round(size * 0.66);
   const b0 = Math.round(size * 0.30), b1 = Math.round(size * 0.70), bt = Math.round(size * 0.045);

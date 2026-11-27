@@ -1,18 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import localFont from "next/font/local";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { SwRegister } from "@/components/SwRegister";
 
-const sans = localFont({
-  src: "./fonts/MedeoSansVariable.woff2",
-  variable: "--font-medeo-sans",
-  weight: "100 900",
-  display: "swap",
-});
-const mono = localFont({
-  src: "./fonts/MedeoMonoVariable.woff2",
-  variable: "--font-medeo-mono",
-  weight: "100 900",
+const inter = Inter({
+  subsets: ["latin", "cyrillic", "cyrillic-ext"],
+  weight: ["400", "600", "700", "800"],
+  variable: "--font-inter",
   display: "swap",
 });
 
@@ -26,15 +20,14 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fbf9fc" },
-    { media: "(prefers-color-scheme: dark)", color: "#0b0b0d" },
-  ],
+  themeColor: "#f6f3fa",
+  colorScheme: "light",
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="kk" className={`${sans.variable} ${mono.variable}`}>
+    <html lang="kk" className={inter.variable}>
       <body>
         {children}
         <SwRegister />

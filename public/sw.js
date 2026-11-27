@@ -1,5 +1,5 @@
 // Hand-written service worker. Lesson must work in airplane mode after the first visit.
-const VERSION = "man-v2";
+const VERSION = "man-v3";
 const SHELL = ["/", "/teacher", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png", "/apple-touch-icon.png"];
 
 // Pull every /_next/static asset referenced by a shell page, so chunks loaded

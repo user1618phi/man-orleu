@@ -63,59 +63,59 @@ export function LocalTask({ lang }: { lang: Lang }) {
   };
 
   return (
-    <section className="flex flex-col gap-3 border-t border-line pt-8">
-      <h2 className="text-[26px]">{TX.title[lang]}</h2>
-      <p className="text-[15px] text-mut">{TX.help[lang]}</p>
-      <textarea className="field min-h-[96px]" maxLength={1000} value={text} placeholder={TX.ph[lang]} onChange={(e) => setText(e.target.value)} />
-      {!online && <p className="mark warn">{TX.offline[lang]}</p>}
-      {err && <p className="mark bad whitespace-normal">{TX.fail[lang]}</p>}
-      <button type="button" className="btn self-start" disabled={!online || busy || text.trim().length < 10} onClick={make}>
+    <section className="card flex flex-col gap-3">
+      <h2 className="h-card">{TX.title[lang]}</h2>
+      <p className="text-[17px] leading-6 text-text-2">{TX.help[lang]}</p>
+      <textarea className="field-text min-h-[96px]" maxLength={1000} value={text} placeholder={TX.ph[lang]} onChange={(e) => setText(e.target.value)} />
+      {!online && <p className="rounded-[14px] bg-mark-soft px-4 py-2 text-[15px] font-semibold">{TX.offline[lang]}</p>}
+      {err && <p className="rounded-[14px] bg-bad-soft px-4 py-2 text-[15px] font-semibold text-bad">{TX.fail[lang]}</p>}
+      <button type="button" className="btn btn-primary" disabled={!online || busy || text.trim().length < 10} onClick={make}>
         {busy ? TX.busy[lang] : TX.make[lang]}
       </button>
 
       {tasks.length > 0 && (
         <div className="mt-4 flex flex-col">
-          <p className="label mb-2">{TX.saved[lang]}</p>
+          <p className="t-2 mb-2">{TX.saved[lang]}</p>
           {tasks.map((t) => (
             <div key={t.id} className="border-b border-line py-3 first:border-t">
-              <button type="button" className="flex w-full items-center justify-between gap-3 text-left" onClick={() => setOpen(open === t.id ? null : t.id)}>
-                <span className="text-[17px]">{t.title}</span>
-                <span className="label">{open === t.id ? "−" : "+"}</span>
+              <button type="button" className="flex min-h-12 w-full items-center justify-between gap-3 text-left" onClick={() => setOpen(open === t.id ? null : t.id)}>
+                <span className="text-[17px] font-semibold">{t.title}</span>
+                <span className="text-[20px] font-bold">{open === t.id ? "−" : "+"}</span>
               </button>
               {open === t.id && (
-                <div className="mt-3 flex flex-col gap-3 text-[15px]">
+                <div className="mt-3 flex flex-col gap-3 text-[17px] leading-6">
                   <p>{t.situation}</p>
                   <div>
                     {t.data.map((d) => (
                       <div key={d.id} className="flex justify-between gap-3 border-b border-line py-1">
-                        <span className="text-mut">{d.label}</span>
-                        <span className="num">
+                        <span className="text-text-2">{d.label}</span>
+                        <span className="tnum font-bold">
                           {num(d.value)} {d.unit}
                         </span>
                       </div>
                     ))}
                   </div>
                   <p>
-                    <span className="label">1 · </span>
+                    <span className="font-bold">1. </span>
                     {t.formulate.prompt}
                   </p>
                   <p>
-                    <span className="label">2 · </span>
-                    {t.employ.prompt} <span className="mark ok">{TX.answer[lang]}: {num(t.employ.answer)} {t.employ.unit}</span>
+                    <span className="font-bold">2. </span>
+                    {t.employ.prompt} <span className="font-bold text-ok">{TX.answer[lang]}: {num(t.employ.answer)} {t.employ.unit}</span>
                   </p>
                   <div className="flex flex-col gap-1 pl-4">
-                    <span className="label">{TX.bugs[lang]}</span>
+                    <span className="font-semibold">{TX.bugs[lang]}</span>
                     {t.employ.bugs.map((b, i) => (
                       <span key={i}>
-                        <span className="num">{num(b.value)}</span> — {ERROR_NAME[b.errorType][lang]}: {b.why}
+                        <span className="tnum font-bold">{num(b.value)}</span> — {ERROR_NAME[b.errorType][lang]}: {b.why}
                       </span>
                     ))}
                   </div>
                   <p>
-                    <span className="label">3 · </span>
+                    <span className="font-bold">3. </span>
                     {t.interpret.prompt}
                   </p>
-                  <p className="mark info whitespace-normal">{TX.check[lang]}</p>
+                  <p className="rounded-[12px] bg-mark-soft px-3 py-2 text-[15px] font-semibold">{TX.check[lang]}</p>
                 </div>
               )}
             </div>
