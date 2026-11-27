@@ -87,3 +87,38 @@ import { decodeSummary, encodeSummary, summarize } from "../lib/profile";
   if (!ok) { console.error("FAIL qr code round trip", d1, d2); process.exit(1); }
   console.log("qr code round trip ok");
 }
+
+// Alem provider without network: prose around JSON, a bad first reply, fallback model, answer-leak guard.
+import { completeJson, extractJson } from "../lib/llm";
+import { EXPLAIN_SCHEMA, isExplain, leaksAnswer } from "../lib/ai-tasks";
+void (async () => {
+  if (JSON.stringify(extractJson('<think>x</think>Вот ответ: {"a":"}{","b":{"c":1}} конец')) !== '{"a":"}{","b":{"c":1}}') {
+    console.error("FAIL extractJson");
+    process.exit(1);
+  }
+  const calls: string[] = [];
+  const realFetch = globalThis.fetch;
+  process.env.ALEM_API_KEY = "test";
+  delete process.env.ANTHROPIC_API_KEY;
+  globalThis.fetch = (async (_url: unknown, init?: { body?: unknown }) => {
+    const model = JSON.parse(String(init?.body)).model as string;
+    calls.push(model);
+    const content = model === "gpt-oss" ? 'Ответ:\n```json\n{"stage":"formulate","feedback":"Посмотри на сноску.","question":"Что сказано про субботу?"}\n```' : "не JSON";
+    return new Response(JSON.stringify({ choices: [{ message: { content } }] }), { status: 200 });
+  }) as typeof fetch;
+  const r = await completeJson({ system: "s", user: "u", schema: EXPLAIN_SCHEMA, validate: isExplain, maxTokens: 100, timeoutMs: 1000 });
+  globalThis.fetch = realFetch;
+  delete process.env.ALEM_API_KEY;
+  if (!r.ok || r.model !== "gpt-oss" || calls.join(",") !== "alemllm,alemllm,gpt-oss") {
+    console.error("FAIL alem fallback", r, calls);
+    process.exit(1);
+  }
+  if (!leaksAnswer({ stage: "employ", feedback: "Правильно будет 38 400 ₸", question: "?" }, 38400, "я получил 12") || leaksAnswer({ stage: "employ", feedback: "Ты написал 12", question: "?" }, 38400, "я получил 12")) {
+    console.error("FAIL leak guard");
+    process.exit(1);
+  }
+  console.log("alem provider ok (retry → fallback model, JSON extraction, leak guard)");
+})().catch((e) => {
+  console.error("FAIL alem provider", e);
+  process.exit(1);
+});
