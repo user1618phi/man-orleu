@@ -150,6 +150,7 @@ export function App() {
           <footer className="flex flex-col gap-3 border-t border-line pt-4">
             <p className="label">{T.aiNote[lang]}</p>
             <div className="flex gap-6">
+              {/* Full navigation on purpose: client-side transitions need RSC requests that fail offline. */}
               <a className="link label" href="/teacher">
                 {T.teacher[lang]} →
               </a>
