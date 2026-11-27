@@ -70,6 +70,8 @@ async function alemOnce(model: string, key: string, call: JsonCall<unknown>): Pr
           },
           { role: "user", content: call.user },
         ],
+        // without this the Qwen fallback spends the budget thinking and returns empty content
+        chat_template_kwargs: { enable_thinking: false, thinking: false },
       }),
       signal: ctrl.signal,
     });
