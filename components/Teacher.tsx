@@ -113,7 +113,7 @@ export function Teacher() {
 
         <section className="flex flex-col gap-3">
           <div className="flex flex-wrap gap-3">
-            <button type="button" className="btn primary" onClick={() => save(demoClass())}>
+            <button type="button" className="btn primary" onClick={() => save([...demoClass(), ...list.filter((x) => !demoClass().some((d) => d.name === x.name))])}>
               {TT.demo[lang]}
             </button>
             <button type="button" className="btn" onClick={() => setScanning((v) => !v)}>
@@ -146,7 +146,9 @@ export function Teacher() {
           <>
             <section className="flex flex-col gap-3">
               <p className="label num">
-                {list.length} {TT.students[lang]} · {agg.totalAnswers} {TT.answers[lang]}
+                {lang === "kk"
+                  ? `${list.length} ${TT.students.kk} · ${agg.totalAnswers} ${TT.answers.kk}`
+                  : `${TT.students.ru}: ${list.length} · ${TT.answers.ru}: ${agg.totalAnswers}`}
               </p>
               <div>
                 {STAGES.map((s, i) => {

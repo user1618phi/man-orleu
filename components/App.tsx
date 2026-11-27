@@ -206,19 +206,14 @@ function Shell({ lang, onLang, queued, children }: { lang: Lang; onLang: (l: Lan
 
 function LangSwitch({ lang, onChange }: { lang: Lang; onChange: (l: Lang) => void }) {
   return (
-    <div className="relative grid grid-cols-2 rounded-[10px] border border-line p-0.5" role="group" aria-label="language">
-      <span
-        aria-hidden
-        className="absolute bottom-0.5 top-0.5 w-[calc(50%-2px)] rounded-[8px] bg-fg transition-transform duration-[560ms] [transition-timing-function:var(--ease-spring)]"
-        style={{ transform: lang === "kk" ? "translateX(2px)" : "translateX(calc(100% + 2px))" }}
-      />
+    <div className="flex shrink-0 gap-1 rounded-[13px] border border-line p-1" role="group" aria-label="language">
       {(["kk", "ru"] as const).map((l) => (
         <button
           key={l}
           type="button"
           onClick={() => onChange(l)}
           aria-pressed={lang === l}
-          className={`relative z-10 min-h-[36px] min-w-[40px] px-2 font-mono text-[13px] transition-colors ${lang === l ? "text-bg" : "text-mut"}`}
+          className={`min-h-[36px] min-w-[44px] rounded-[10px] px-2 font-mono text-[13px] transition-colors duration-200 ${lang === l ? "bg-fg text-bg" : "text-mut"}`}
         >
           {l === "kk" ? "қаз" : "рус"}
         </button>

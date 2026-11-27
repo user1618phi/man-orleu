@@ -13,6 +13,8 @@ interface Props {
   reveal?: boolean;
 }
 
+const isNum = (s: string) => /^[\d\s\u00a0:,.%₸°C+−-]+(мин|ай|мес|ГБ|МБ|кг|г|мл|л|°C)?$/.test(s.trim());
+
 export function StimulusView({ stimulus, params, lang, picked, onToggle, reveal }: Props) {
   const cellState = (c: Cell) => {
     const on = picked?.has(c.id) ?? false;
@@ -25,7 +27,7 @@ export function StimulusView({ stimulus, params, lang, picked, onToggle, reveal 
   const CellView = ({ c, big }: { c: Cell; big?: boolean }) => {
     const { on, cls } = cellState(c);
     const text = c.text(params)[lang];
-    const base = `${big ? "num text-[19px]" : "text-[15px]"} leading-snug rounded-[10px] px-2 py-2 -mx-1 ${cls}`;
+    const base = `${big ? "num text-[19px]" : "text-[15px]"} leading-snug rounded-[10px] px-2 py-2 ${big ? "whitespace-nowrap" : ""} ${cls}`;
     if (!onToggle) return <span className={`block ${base}`}>{text}</span>;
     return (
       <button type="button" aria-pressed={on} onClick={() => onToggle(c.id)} className={`cell-pick block w-full text-left ${base}`}>
@@ -56,7 +58,7 @@ export function StimulusView({ stimulus, params, lang, picked, onToggle, reveal 
                     <tr key={j}>
                       {r.map((c) => (
                         <td key={c.id} className="border-b border-line py-1 pr-2 align-middle">
-                          <CellView c={c} big={/^[\d\s\u00a0:,.%₸−-]+(мин|ай|мес|ГБ|МБ|кг|л)?$/.test(c.text(params)[lang].trim())} />
+                          <CellView c={c} big={isNum(c.text(params)[lang])} />
                         </td>
                       ))}
                     </tr>
@@ -79,8 +81,8 @@ export function StimulusView({ stimulus, params, lang, picked, onToggle, reveal 
               {rows.map((row) => (
                 <div key={row.value.id} className="flex items-center justify-between gap-3 border-b border-line py-1 last:border-b-0">
                   <span className="text-[15px] text-mut">{row.label[lang]}</span>
-                  <span className="max-w-[60%] text-right">
-                    <CellView c={row.value} big />
+                  <span className="max-w-[62%] shrink-0 text-right">
+                    <CellView c={row.value} big={isNum(row.value.text(params)[lang])} />
                   </span>
                 </div>
               ))}
