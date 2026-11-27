@@ -249,6 +249,21 @@ export function Lesson({ inst, lang, onDone, onExit, exam }: Props) {
           <p className="mt-2 text-[17px] leading-6">{L(t.situation)}</p>
         </div>
 
+        {phase === "1a" && (
+          <section ref={questionRef} className="flex scroll-mt-24 flex-col gap-3 pt-3">
+            <h3 className="h-card">{L(T.whatToFind)}</h3>
+            <Options
+              items={t.formulate.choices.map((c) => L(c.text))}
+              order={order1}
+              value={c1}
+              out={out1}
+              locked={!!sheet}
+              result={sheet ? sheet.tone : null}
+              onChange={setC1}
+            />
+          </section>
+        )}
+
         {phase === "1b" && (
           <div ref={questionRef} className="scroll-mt-24 pt-3">
             <h3 className="h-card">{L(T.whatData)}</h3>
@@ -283,21 +298,6 @@ export function Lesson({ inst, lang, onDone, onExit, exam }: Props) {
         />
 
         {phase === "1b" && <p className="t-2 tnum">{`${L(T.selected)}: ${picked.size}`}</p>}
-
-        {phase === "1a" && (
-          <section ref={questionRef} className="flex scroll-mt-24 flex-col gap-3 pt-3">
-            <h3 className="h-card">{L(T.whatToFind)}</h3>
-            <Options
-              items={t.formulate.choices.map((c) => L(c.text))}
-              order={order1}
-              value={c1}
-              out={out1}
-              locked={!!sheet}
-              result={sheet ? sheet.tone : null}
-              onChange={setC1}
-            />
-          </section>
-        )}
 
         {phase === "2" && (
           <section ref={questionRef} className="flex scroll-mt-24 flex-col gap-3 pt-3">
