@@ -64,7 +64,7 @@ export function evaluate(src: string, vars: Record<string, number>): number {
       return x;
     }
     if (tk.t === "id") {
-      if (FN[tk.v] && peek()?.v === "(") {
+      if (Object.hasOwn(FN, tk.v) && peek()?.v === "(") {
         eat("(");
         const args = [expr()];
         while (peek()?.v === ",") {
@@ -74,7 +74,7 @@ export function evaluate(src: string, vars: Record<string, number>): number {
         eat(")");
         return FN[tk.v](...args);
       }
-      if (tk.v in vars) return vars[tk.v];
+      if (Object.hasOwn(vars, tk.v) && typeof vars[tk.v] === "number") return vars[tk.v];
     }
     throw new Error("unknown");
   };
