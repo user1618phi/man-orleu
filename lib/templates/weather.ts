@@ -3,12 +3,12 @@ import { same } from "../format";
 import type { Cell, Params, TaskTemplate } from "../types";
 
 const DAYS = [
-  { kk: "дс", ru: "пн" },
-  { kk: "сс", ru: "вт" },
-  { kk: "ср", ru: "ср" },
-  { kk: "бс", ru: "чт" },
-  { kk: "жм", ru: "пт" },
-  { kk: "сб", ru: "сб" },
+  { kk: "дүйсенбі", ru: "понедельник" },
+  { kk: "сейсенбі", ru: "вторник" },
+  { kk: "сәрсенбі", ru: "среда" },
+  { kk: "бейсенбі", ru: "четверг" },
+  { kk: "жұма", ru: "пятница" },
+  { kk: "сенбі", ru: "суббота" },
 ];
 const temps = (p: Params) => [p.t0, p.t1, p.t2, p.t3, p.t4, p.t5];
 const deg = (n: number) => `${n < 0 ? "−" : ""}${Math.abs(n)} °C`;
@@ -41,8 +41,14 @@ export const weather: TaskTemplate = {
     {
       kind: "table",
       caption: { kk: "Таңғы температура", ru: "Утренняя температура" },
-      head: DAYS,
-      rows: [temps(p).map((v, i): Cell => ({ id: `t${i}`, text: () => same(deg(v)), needed: true }))],
+      head: [
+        { kk: "күн", ru: "день" },
+        { kk: "таңертең", ru: "утром" },
+      ],
+      rows: temps(p).map((v, i): Cell[] => [
+        { id: `d${i}`, text: () => DAYS[i], needed: false },
+        { id: `t${i}`, text: () => same(deg(v)), needed: true },
+      ]),
       footnote: { id: "sun", text: () => ({ kk: "Жексенбіде өлшенбеді", ru: "В воскресенье не измеряли" }), needed: true },
     },
     {

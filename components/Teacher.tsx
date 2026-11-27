@@ -102,9 +102,12 @@ export function Teacher() {
   return (
     <div className="mx-auto flex min-h-dvh max-w-2xl flex-col px-4 pt-4">
       <div className="panel sticky top-2 z-10 mb-8 flex items-center justify-between gap-3 px-4 py-3">
-        <span className="font-mono text-[20px] tracking-tight">мән · {lang === "kk" ? "мұғалім" : "учитель"}</span>
+        <span className="flex shrink-0 flex-col leading-none">
+          <span className="font-mono text-[20px] tracking-tight">мән</span>
+          <span className="label">{lang === "kk" ? "мұғалім" : "учитель"}</span>
+        </span>
         <NetBadge lang={lang} queued={0} />
-        <button type="button" className="btn !min-h-[36px] !px-3 !py-1 font-mono !text-[13px]" onClick={() => setLang(lang === "kk" ? "ru" : "kk")}>
+        <button type="button" className="btn shrink-0 !min-h-[40px] !px-3 !py-1 font-mono !text-[13px]" onClick={() => setLang(lang === "kk" ? "ru" : "kk")}>
           {lang === "kk" ? "рус" : "қаз"}
         </button>
       </div>
