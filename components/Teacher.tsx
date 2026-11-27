@@ -8,6 +8,7 @@ import { LocalTask } from "./LocalTask";
 import { decodeSummary, pct, type Summary } from "@/lib/profile";
 import { demoClass, ERROR_TIP, STAGE_TIP } from "@/lib/teacher";
 import { ERROR_NAME, STAGE_NAME } from "@/lib/i18n";
+import { EXAM_MAX } from "@/lib/exam";
 import { loadSettings } from "@/lib/store";
 import { ERROR_TYPES, STAGES, type ErrorType, type Lang, type Stage } from "@/lib/types";
 
@@ -90,7 +91,10 @@ export function Teacher() {
       .filter(([, n]) => n > 0)
       .sort((a, b) => b[1] - a[1]);
     const totalAnswers = STAGES.reduce((n, s) => n + stages[s].total, 0);
-    return { stages, weak, topErrors, totalAnswers };
+    const both = list.filter((x) => x.exam?.A !== undefined && x.exam?.B !== undefined);
+    const avg = (f: "A" | "B") => (both.length ? Math.round((100 * both.reduce((n, x) => n + (x.exam?.[f] ?? 0), 0)) / (both.length * EXAM_MAX)) : null);
+    const exam = { n: both.length, before: avg("A"), after: avg("B") };
+    return { stages, weak, topErrors, totalAnswers, exam };
   }, [list]);
 
   const maxErr = agg.topErrors[0]?.[1] ?? 1;
@@ -170,6 +174,26 @@ export function Teacher() {
                 })}
               </div>
             </section>
+
+            {agg.exam.n > 0 && agg.exam.before !== null && agg.exam.after !== null && (
+              <section className="flex flex-col gap-3">
+                <p className="label num">
+                  {lang === "kk" ? `өлшеу: дейін → кейін · ${agg.exam.n} оқушы` : `замер: до → после · учеников: ${agg.exam.n}`}
+                </p>
+                <div className="flex items-baseline gap-4">
+                  <span className="num text-[30px] text-mut">{agg.exam.before}%</span>
+                  <span className="label">→</span>
+                  <span className="num text-[30px]">{agg.exam.after}%</span>
+                  <span className={`num text-[22px] ${agg.exam.after >= agg.exam.before ? "text-acc-text" : ""}`}>
+                    {agg.exam.after >= agg.exam.before ? "+" : ""}
+                    {agg.exam.after - agg.exam.before} {lang === "kk" ? "п.т." : "п.п."}
+                  </span>
+                </div>
+                <p className="label">
+                  {lang === "kk" ? "Сол алты есеп, басқа сандар — жауап жаттап алу мүмкін емес." : "Те же шесть задач с другими числами — выучить ответы нельзя."}
+                </p>
+              </section>
+            )}
 
             {agg.topErrors.length > 0 && (
               <section className="flex flex-col gap-3">

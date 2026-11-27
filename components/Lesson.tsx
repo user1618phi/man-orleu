@@ -17,11 +17,15 @@ interface Props {
   lang: Lang;
   onDone: (r: LessonResult) => void;
   onExit: () => void;
+  /** Measurement mode: no feedback, no hints, steps advance on check. */
+  exam?: { index: number; total: number };
 }
+
+const stamp = () => Date.now();
 
 type Feedback = { correct: boolean; errorType?: ErrorType; lines: string[] };
 
-export function Lesson({ inst, lang, onDone, onExit }: Props) {
+export function Lesson({ inst, lang, onDone, onExit, exam }: Props) {
   const t = inst.template;
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [attempts, setAttempts] = useState<Attempt[]>([]);
@@ -66,6 +70,10 @@ export function Lesson({ inst, lang, onDone, onExit }: Props) {
     if (ch.correct && v.missed?.length) lines.push(L(T.missedData));
     if (!v.correct) lines.push(L(t.formulate.dataHint));
     record("formulate", v.correct, v.errorType);
+    if (exam) {
+      setStep(2);
+      return;
+    }
     setFb1({ correct: v.correct, errorType: v.errorType, lines });
   };
 
@@ -83,6 +91,10 @@ export function Lesson({ inst, lang, onDone, onExit }: Props) {
     else if (v.bugIndex !== undefined) lines.push(L(t.employ.bugs[v.bugIndex].why));
     else lines.push(L(T.calcSlip));
     record("employ", v.correct, v.errorType);
+    if (exam) {
+      setStep(3);
+      return;
+    }
     setFb2({ correct: v.correct, errorType: v.errorType, lines });
     if (!v.correct) setHints((h) => Math.max(h, 1));
   };
@@ -90,6 +102,11 @@ export function Lesson({ inst, lang, onDone, onExit }: Props) {
   const check3 = () => {
     if (choice3 === null) return;
     const ch: Choice = choices3[choice3];
+    if (exam) {
+      const last: Attempt = { templateId: t.id, seed: inst.seed, stage: "interpret", correct: ch.correct, errorType: ch.correct ? undefined : (ch.errorType ?? "no_interpretation"), ts: stamp() };
+      onDone({ attempts: [...attempts.filter((a) => a.stage !== "interpret"), last], answer: firstAnswer });
+      return;
+    }
     record("interpret", ch.correct, ch.correct ? undefined : (ch.errorType ?? "no_interpretation"));
     setFb3({ correct: ch.correct, errorType: ch.correct ? undefined : ch.errorType, lines: [L(ch.why)] });
   };
@@ -103,7 +120,7 @@ export function Lesson({ inst, lang, onDone, onExit }: Props) {
           ← {L(T.home)}
         </button>
         <span className="label num">
-          {L(T.level)} {inst.level} · #{inst.seed}
+          {exam ? `${L({ kk: "өлшеу", ru: "замер" })} ${exam.index + 1} / ${exam.total}` : `${L(T.level)} ${inst.level} · #${inst.seed}`}
         </span>
       </header>
 
@@ -179,7 +196,7 @@ export function Lesson({ inst, lang, onDone, onExit }: Props) {
             </div>
           )}
           <div className="flex flex-wrap gap-3">
-            {hints < 2 && (
+            {!exam && hints < 2 && (
               <button type="button" className="btn" onClick={() => setHints((h) => h + 1)}>
                 {hints === 0 ? L(T.hint) : L(T.hint2)}
               </button>

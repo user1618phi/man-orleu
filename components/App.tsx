@@ -10,8 +10,9 @@ import { ERROR_NAME, STAGE_DESC, STAGE_NAME, T } from "@/lib/i18n";
 import { addAttempts, loadAttempts, loadOutbox, loadSettings, saveOutbox, saveSettings, syncOutbox, type Settings } from "@/lib/store";
 import { encodeSummary, pct, summarize, weakest } from "@/lib/profile";
 import { STAGES, type Attempt, type Lang, type Level, type OutboxItem } from "@/lib/types";
+import { EXAM_MAX, EXAM_TEMPLATES, examSeed, loadExam, saveExam, type ExamScores, type Form } from "@/lib/exam";
 
-type Screen = "loading" | "onboard" | "home" | "task" | "result" | "qr" | "outbox";
+type Screen = "loading" | "onboard" | "home" | "task" | "result" | "qr" | "outbox" | "exam-intro" | "exam" | "exam-done";
 
 export function App() {
   const [screen, setScreen] = useState<Screen>("loading");
@@ -21,11 +22,14 @@ export function App() {
   const [inst, setInst] = useState<Instance | null>(null);
   const [tplIndex, setTplIndex] = useState(0);
   const [last, setLast] = useState<{ result: LessonResult; levelMsg: "up" | "down" | null } | null>(null);
+  const [examScores, setExamScores] = useState<ExamScores>({});
+  const [exam, setExam] = useState<{ form: Form; index: number; attempts: Attempt[] } | null>(null);
   const lang = settings.lang;
 
   useEffect(() => {
     (async () => {
-      const [s, a, o] = await Promise.all([loadSettings(), loadAttempts(), loadOutbox()]);
+      const [s, a, o, ex] = await Promise.all([loadSettings(), loadAttempts(), loadOutbox(), loadExam()]);
+      setExamScores(ex);
       setAttempts(a);
       setOutbox(o);
       setTplIndex(Math.floor(Math.random() * TEMPLATES.length));
@@ -111,8 +115,32 @@ export function App() {
     setOutbox(await syncOutbox());
   };
 
+  const startExam = (form: Form) => {
+    setExam({ form, index: 0, attempts: [] });
+    const t = getTemplate(EXAM_TEMPLATES[0]);
+    if (t) setInst(instantiate(t, examSeed(form, 0)));
+    setScreen("exam");
+    window.scrollTo({ top: 0 });
+  };
+
+  const onExamStep = async (r: LessonResult) => {
+    if (!exam) return;
+    const attemptsSoFar = [...exam.attempts, ...r.attempts];
+    const next = exam.index + 1;
+    if (next >= EXAM_TEMPLATES.length) {
+      setExamScores(await saveExam(exam.form, attemptsSoFar));
+      setExam({ ...exam, index: next, attempts: attemptsSoFar });
+      setScreen("exam-done");
+    } else {
+      const t = getTemplate(EXAM_TEMPLATES[next]);
+      if (t) setInst(instantiate(t, examSeed(exam.form, next)));
+      setExam({ ...exam, index: next, attempts: attemptsSoFar });
+    }
+    window.scrollTo({ top: 0 });
+  };
+
   const queued = outbox.filter((o) => o.status === "queued").length;
-  const summary = useMemo(() => summarize(settings.name, attempts), [settings.name, attempts]);
+  const summary = useMemo(() => ({ ...summarize(settings.name, attempts), exam: examScores }), [settings.name, attempts, examScores]);
 
   if (screen === "loading") return <Shell lang={lang} onLang={(l) => update({ lang: l })} queued={0} />;
 
@@ -143,6 +171,14 @@ export function App() {
                 {T.myQueue[lang]} <span className="num text-mut">{outbox.length}</span>
               </button>
             </div>
+            <button type="button" className="btn" onClick={() => setScreen("exam-intro")}>
+              {lang === "kk" ? "Өлшеу: дейін / кейін" : "Замер: до / после"}
+              {(examScores.A !== undefined || examScores.B !== undefined) && (
+                <span className="num text-mut">
+                  {examScores.A ?? "—"} → {examScores.B ?? "—"}
+                </span>
+              )}
+            </button>
             <p className="label num">
               {T.level[lang]} {settings.level} / 3 · {TEMPLATES.length} {lang === "kk" ? "есеп үлгісі" : "шаблонов задач"}
             </p>
@@ -175,6 +211,79 @@ export function App() {
           onHome={() => setScreen("home")}
           onEnqueue={enqueue}
         />
+      )}
+
+      {screen === "exam-intro" && (
+        <div className="flex flex-col gap-8">
+          <button type="button" className="link label self-start" onClick={() => setScreen("home")}>
+            ← {T.back[lang]}
+          </button>
+          <h2 className="text-[32px]">{lang === "kk" ? "Өлшеу" : "Замер"}</h2>
+          <p className="text-[17px]">
+            {lang === "kk"
+              ? "Кеңессіз және талдаусыз алты есеп. «Дейін» нұсқасын бастапқыда, «кейін» нұсқасын бірнеше аптадан соң шығар: есептер сол, сандар басқа. Мұғалім айырманы көреді."
+              : "Шесть задач без подсказок и разбора. Форму «до» реши в начале, форму «после» — через несколько недель: задачи те же, числа другие. Учитель увидит разницу."}
+          </p>
+          <div className="flex flex-col">
+            {(["A", "B"] as const).map((f) => (
+              <div key={f} className="flex items-center justify-between border-b border-line py-3 first:border-t">
+                <span className="text-[17px]">{f === "A" ? (lang === "kk" ? "Дейін" : "До") : lang === "kk" ? "Кейін" : "После"}</span>
+                <span className="num text-[22px]">
+                  {examScores[f] !== undefined ? `${examScores[f]} / ${EXAM_MAX}` : "—"}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-3">
+            <button type="button" className={`btn flex-1 ${examScores.A === undefined ? "primary" : ""}`} onClick={() => startExam("A")}>
+              {lang === "kk" ? "«Дейін» бастау" : "Начать «до»"}
+            </button>
+            <button type="button" className={`btn flex-1 ${examScores.A !== undefined ? "primary" : ""}`} onClick={() => startExam("B")}>
+              {lang === "kk" ? "«Кейін» бастау" : "Начать «после»"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {screen === "exam" && inst && exam && (
+        <Lesson
+          key={`exam-${exam.form}-${exam.index}`}
+          inst={inst}
+          lang={lang}
+          exam={{ index: exam.index, total: EXAM_TEMPLATES.length }}
+          onDone={onExamStep}
+          onExit={() => setScreen("home")}
+        />
+      )}
+
+      {screen === "exam-done" && exam && (
+        <div className="flex flex-col gap-8">
+          <p className="label">{lang === "kk" ? "өлшеу аяқталды" : "замер завершён"}</p>
+          <h1 className="text-[44px]">
+            <span className="num text-acc-text">{examScores[exam.form] ?? 0}</span> / {EXAM_MAX}
+          </h1>
+          <div className="flex flex-col">
+            {STAGES.map((st) => {
+              const xs = exam.attempts.filter((a) => a.stage === st);
+              return (
+                <div key={st} className="flex items-center justify-between border-b border-line py-3 first:border-t">
+                  <span className="text-[17px]">{STAGE_NAME[st][lang]}</span>
+                  <span className="num text-[22px]">
+                    {xs.filter((a) => a.correct).length} / {xs.length}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex gap-3">
+            <button type="button" className="btn primary flex-1" onClick={() => setScreen("qr")}>
+              {T.showQr[lang]}
+            </button>
+            <button type="button" className="btn flex-1" onClick={() => setScreen("home")}>
+              {T.home[lang]}
+            </button>
+          </div>
+        </div>
       )}
 
       {screen === "qr" && <QrView code={encodeSummary(summary)} lang={lang} onBack={() => setScreen("home")} />}

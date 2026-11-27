@@ -35,7 +35,9 @@ export function demoClass(): Summary[] {
         errors[e]++;
       }
     }
-    return { name, stages, errors };
+    const before = Math.round(18 * (rate.formulate + rate.employ + rate.interpret) / 3 - 2 - rng() * 2);
+    const after = Math.min(18, before + Math.round(rng() * 5));
+    return { name, stages, errors, exam: { A: Math.max(0, before), B: after } };
   });
 }
 

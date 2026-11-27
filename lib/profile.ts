@@ -4,6 +4,8 @@ export interface Summary {
   name: string;
   stages: Record<Stage, { ok: number; total: number }>;
   errors: Record<ErrorType, number>;
+  /** Measurement before/after: correct steps out of EXAM_MAX. */
+  exam?: { A?: number; B?: number };
 }
 
 export function summarize(name: string, attempts: Attempt[]): Summary {
@@ -47,15 +49,17 @@ export function encodeSummary(s: Summary): string {
   const name = s.name.replace(/[.\s]+/g, "_").slice(0, 20) || "?";
   const st = STAGES.map((k) => `${b36(s.stages[k].ok)}-${b36(s.stages[k].total)}`).join(".");
   const er = ERROR_TYPES.map((e) => b36(s.errors[e])).join("-");
-  const body = `M1.${name}.${st}.${er}`;
+  const ex = s.exam && (s.exam.A !== undefined || s.exam.B !== undefined) ? `${s.exam.A !== undefined ? b36(s.exam.A) : "x"}-${s.exam.B !== undefined ? b36(s.exam.B) : "x"}` : null;
+  const body = ex ? `M2.${name}.${st}.${er}.${ex}` : `M1.${name}.${st}.${er}`;
   return `${body}.${checksum(body)}`;
 }
 
 export function decodeSummary(code: string): Summary | null {
   const parts = code.trim().split(".");
-  if (parts.length !== 7 || parts[0] !== "M1") return null;
-  const body = parts.slice(0, 6).join(".");
-  if (checksum(body) !== parts[6].toLowerCase()) return null;
+  const v2 = parts[0] === "M2" && parts.length === 8;
+  if (!v2 && (parts.length !== 7 || parts[0] !== "M1")) return null;
+  const body = parts.slice(0, parts.length - 1).join(".");
+  if (checksum(body) !== parts[parts.length - 1].toLowerCase()) return null;
   const stages = {} as Summary["stages"];
   for (let i = 0; i < 3; i++) {
     const [ok, total] = parts[2 + i].split("-").map((x) => parseInt(x, 36));
@@ -65,5 +69,12 @@ export function decodeSummary(code: string): Summary | null {
   const nums = parts[5].split("-").map((x) => parseInt(x, 36));
   if (nums.length !== ERROR_TYPES.length || nums.some((n) => !Number.isFinite(n))) return null;
   const errors = Object.fromEntries(ERROR_TYPES.map((e, i) => [e, nums[i]])) as Summary["errors"];
-  return { name: parts[1].replace(/_/g, " "), stages, errors };
+  let exam: Summary["exam"];
+  if (v2) {
+    const [a, b] = parts[6].split("-");
+    exam = {};
+    if (a && a !== "x") exam.A = parseInt(a, 36);
+    if (b && b !== "x") exam.B = parseInt(b, 36);
+  }
+  return { name: parts[1].replace(/_/g, " "), stages, errors, exam };
 }

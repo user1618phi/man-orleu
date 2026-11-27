@@ -71,3 +71,19 @@ for (const bad of ["process.exit(1)", "a; b", "constructor", "1 +", "Math.PI"]) 
   if (!threw) { console.error("FAIL expr should reject", bad); process.exit(1); }
 }
 console.log("expression evaluator ok");
+
+// QR code round trip, with and without the before/after measurement.
+import { decodeSummary, encodeSummary, summarize } from "../lib/profile";
+{
+  const s = summarize("Айгерім Н", [
+    { templateId: "bus", seed: 1, stage: "formulate", correct: false, errorType: "ignored_condition", ts: 0 },
+    { templateId: "bus", seed: 1, stage: "employ", correct: true, ts: 0 },
+  ]);
+  const d1 = decodeSummary(encodeSummary(s));
+  const d2 = decodeSummary(encodeSummary({ ...s, exam: { A: 7, B: 12 } }));
+  const ok =
+    d1 && d1.name === "Айгерім Н" && d1.stages.formulate.total === 1 && d1.errors.ignored_condition === 1 && !d1.exam &&
+    d2 && d2.exam?.A === 7 && d2.exam?.B === 12 && decodeSummary(encodeSummary(s).slice(0, -1) + "0") === null;
+  if (!ok) { console.error("FAIL qr code round trip", d1, d2); process.exit(1); }
+  console.log("qr code round trip ok");
+}
