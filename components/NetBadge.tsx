@@ -28,7 +28,7 @@ export function NetBadge({ lang, queued }: { lang: Lang; queued: number }) {
       <span className={`mark ${online ? "ok" : "warn"}`}>{online ? T.online[lang] : T.offline[lang]}</span>
       {queued > 0 && (
         <span className="mark info num">
-          {queued} {T.queue[lang]}
+          {T.queue[lang]}: {queued}
         </span>
       )}
     </div>
