@@ -225,7 +225,7 @@ export function Teacher() {
                 <p className="t-2">{L(TT.topError)}</p>
                 <p className="text-[20px] font-bold leading-[26px]">{ERROR_NAME[agg.topError[0]][lang]}</p>
                 <p className="mt-1 text-[17px]">
-                  {lang === "kk" ? `${list.length} оқушының ${agg.topError[1]}-інде` : `У ${agg.topError[1]} из ${list.length} учеников`}
+                  {lang === "kk" ? `Осы қатені жіберген оқушылар: ${agg.topError[1]} / ${list.length}` : `У ${agg.topError[1]} из ${list.length} учеников`}
                 </p>
               </div>
             </div>
@@ -290,7 +290,7 @@ export function Teacher() {
                 <tr>
                   <th className="t-2 border-b border-line px-4 py-2 text-left font-normal">{lang === "kk" ? "Аты" : "Имя"}</th>
                   {STAGES.map((s, i) => (
-                    <th key={s} className="t-2 border-b border-line px-2 py-2 text-right font-normal">
+                    <th key={s} className="t-2 border-b border-line px-1 py-2 text-right font-normal sm:px-2">
                       <span className="sm:hidden">{i + 1}</span>
                       <span className="hidden sm:inline">{STAGE_NAME[s][lang]}</span>
                     </th>
@@ -305,8 +305,8 @@ export function Teacher() {
                       const v = pct(st.stages[s]);
                       const tone = v === null ? "" : v < 50 ? "bg-bad-soft text-bad" : v < 80 ? "" : "bg-ok-soft text-ok";
                       return (
-                        <td key={s} className="border-b border-line px-2 py-2 text-right">
-                          <span className={`tnum inline-block min-w-[48px] rounded-full px-2 py-0.5 text-center text-[17px] font-bold ${tone}`}>{v === null ? "—" : `${v}%`}</span>
+                        <td key={s} className="border-b border-line px-1 py-2 text-right sm:px-2">
+                          <span className={`tnum inline-block min-w-[46px] rounded-full px-2 py-0.5 text-center text-[17px] font-bold ${tone}`}>{v === null ? "—" : `${v}%`}</span>
                         </td>
                       );
                     })}
